@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleCheck,
+  Copy,
   Milestone,
   MoreHorizontal,
   PanelRight,
@@ -33,6 +34,7 @@ import { useIsMobile } from "@multica/ui/hooks/use-mobile";
 import { ContentEditor, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useLazyEditor, useEditorUpload, ImageSequenceProvider } from "../../editor";
 import { collectImageSequence, type ImageSequenceBlock } from "@multica/core/attachments/image-sequence";
 import { FileUploadButton } from "@multica/ui/components/common/file-upload-button";
+import { copyText } from "@multica/ui/lib/clipboard";
 import {
   Tooltip,
   TooltipTrigger,
@@ -1867,6 +1869,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     [issueAttachments, descPendingAttachments],
   );
 
+  const handleCopyDescription = useCallback(async () => {
+    const markdown = (descEditorRef.current?.getMarkdown() ?? issue?.description ?? "").trim();
+    if (!markdown) return;
+    if (await copyText(markdown)) {
+      toast.success(t(($) => $.detail.description_copied));
+    } else {
+      toast.error(t(($) => $.detail.description_copy_failed));
+    }
+  }, [issue?.description, t]);
+
   // Every image in this issue, in the order the page renders them: the
   // description first, then each timeline comment with its thread replies
   // nested under it (MUL-5752). Built from `items` rather than the flat
@@ -2750,6 +2762,20 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 multiple
                 onSelect={(file) => descEditorRef.current?.uploadFile(file)}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="text-muted-foreground"
+                disabled={!(issue.description || "").trim()}
+                onClick={() => {
+                  void handleCopyDescription();
+                }}
+                aria-label={t(($) => $.detail.copy_description)}
+                title={t(($) => $.detail.copy_description)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
             </div>
             {descDragOver && <FileDropOverlay />}
           </div>
