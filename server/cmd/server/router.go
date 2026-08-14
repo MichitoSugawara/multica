@@ -960,6 +960,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
 		realtime.HandleWebSocket(hub, mc, pr, slugResolver, w, r)
 	})
+	h.SessionPAT = pr
+	r.Get("/api/issues/{id}/runtime-session", h.IssueRuntimeSession)
 
 	// Local file serving (when using local storage). Served through the
 	// handler so /uploads/* carries the same preview security headers as the
@@ -1431,6 +1433,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Put("/properties/{propertyId}", h.SetIssueProperty)
 					r.Delete("/properties/{propertyId}", h.DeleteIssueProperty)
 					r.Get("/pull-requests", h.ListPullRequestsForIssue)
+					r.Get("/runtime-sessions", h.ListIssueRuntimeSessions)
+					r.Post("/runtime-sessions", h.CreateIssueRuntimeSessionHTTP)
+					r.Post("/runtime-sessions/{sessionId}/close", h.CloseIssueRuntimeSessionHTTP)
 				})
 			})
 

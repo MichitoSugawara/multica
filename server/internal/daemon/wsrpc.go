@@ -122,6 +122,20 @@ func (c *wsRPCClient) attach(sendFrame func([]byte) (*wsOutbound, error)) uint64
 	return generation
 }
 
+func (c *wsRPCClient) Enqueue(frame []byte) error {
+	if c == nil {
+		return errWSRPCUnavailable
+	}
+	c.mu.Lock()
+	send := c.sendFrame
+	c.mu.Unlock()
+	if send == nil {
+		return errWSRPCUnavailable
+	}
+	_, err := send(frame)
+	return err
+}
+
 // markRPCV1Supported records explicit server support for the currently
 // attached connection. Heartbeat acks received without a live sender cannot
 // enable a future connection.

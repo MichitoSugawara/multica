@@ -50,6 +50,7 @@ import type {
   IssueTableGroupsResponse,
   IssueTableRowsResponse,
   ListIssuesResponse,
+  ListIssueRuntimeSessionsResponse,
   ListGitHubInstallationsResponse,
   ListGitHubRepositoriesResponse,
   ListLabelsResponse,
@@ -906,6 +907,9 @@ export const IssueSchema = z.object({
   labels: z.array(z.unknown()).optional(),
   created_at: z.string(),
   updated_at: z.string(),
+  // Older backends predate issue-bound runtimes; default null so a missing
+  // field still parses (Issue.runtime_id is string | null | undefined).
+  runtime_id: z.string().nullable().default(null),
 }).loose();
 
 export const ListIssuesResponseSchema = z.object({
@@ -935,6 +939,30 @@ export const CreateIssueResponseSchema = IssueSchema.extend({
 export const EMPTY_LIST_ISSUES_RESPONSE: ListIssuesResponse = {
   issues: [],
   total: 0,
+};
+
+export const IssueRuntimeSessionRecordSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().default(""),
+  issue_id: z.string(),
+  kind: z.string(),
+  daemon_id: z.string().default(""),
+  runtime_id: z.string().default(""),
+  opened_by: z.string().default(""),
+  status: z.string().default("open"),
+  cwd: z.string().nullable().optional().default(null),
+  url: z.string().nullable().optional().default(null),
+  created_at: z.string().default(""),
+  last_active_at: z.string().default(""),
+  closed_at: z.string().nullable().optional().default(null),
+}).loose();
+
+export const ListIssueRuntimeSessionsResponseSchema = z.object({
+  sessions: z.array(IssueRuntimeSessionRecordSchema).default([]),
+}).loose();
+
+export const EMPTY_LIST_ISSUE_RUNTIME_SESSIONS: ListIssueRuntimeSessionsResponse = {
+  sessions: [],
 };
 
 const SearchIssueResultSchema = IssueSchema.extend({

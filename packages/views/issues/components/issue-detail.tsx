@@ -52,6 +52,7 @@ import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar"
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PropRow } from "../../common/prop-row";
 import { PropertyIcon } from "../../common/property-icon";
+import { IssueRightDock } from "./issue-right-dock";
 import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
@@ -87,7 +88,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, childIssuesOptions, childIssueProgressOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
+import { issueListOptions, issueDetailOptions, issueRuntimeSessionsOptions, childIssuesOptions, childIssueProgressOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
@@ -952,6 +953,12 @@ interface IssueDetailProps {
    * the surface the reader arrived from, so only the host can spell that trip.
    */
   leadingAction?: ReactNode;
+  /**
+   * When false, the right pane stays the Properties column (Inbox embed,
+   * or any host that cannot host a PTY/Browser session). Defaults to true;
+   * mobile still suppresses tool tabs even when this is true.
+   */
+  enableRuntimeDock?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1073,7 +1080,7 @@ export function IssueDetailSkeleton({ leading }: { leading?: ReactNode } = {}) {
 // IssueDetail
 // ---------------------------------------------------------------------------
 
-export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = true, layoutId = "multica_issue_detail_layout", highlightCommentId, highlightRequestToken, leadingAction }: IssueDetailProps) {
+export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = true, layoutId = "multica_issue_detail_layout", highlightCommentId, highlightRequestToken, leadingAction, enableRuntimeDock = true }: IssueDetailProps) {
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
   const id = issueId;
@@ -1283,6 +1290,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       return cached?.description != null ? cached : undefined;
     },
   });
+  // Dock panes are keyed by the issue UUID, which may differ from the route
+  // param (identifier). Fall back to the route id until detail has loaded.
+  const { data: runtimeSessions } = useQuery({
+    ...issueRuntimeSessionsOptions(wsId, issue?.id ?? id),
+    enabled: Boolean(enableRuntimeDock && (issue?.id ?? id)),
+  });
+  const hasToolPane = (runtimeSessions?.sessions.length ?? 0) > 0;
 
   // Record recent visit
   const recordVisit = useRecentIssuesStore((s) => s.recordVisit);
@@ -2065,7 +2079,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     return <IssueNotFound showBackLink={!onDelete} leading={leadingAction} />;
   }
 
-  const sidebarContent = (
+  const enableTools = enableRuntimeDock && !isMobile;
+  const propertiesContent = (
     <div className="space-y-5">
       {/* Properties */}
       <div>
@@ -2392,6 +2407,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         </>
       )}
     </div>
+  );
+
+  const sidebarContent = (
+    <IssueRightDock issue={issue} enableTools={enableTools} properties={propertiesContent} />
   );
 
   // Shared row renderer for both timeline render modes (flat / virtualized).
@@ -3151,13 +3170,18 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
         defaultSize={desktopSidebarOpen ? 320 : 0}
         minSize={260}
-        maxSize={420}
+        maxSize={enableRuntimeDock && hasToolPane ? 900 : 420}
         collapsible
         groupResizeBehavior="preserve-pixel-size"
         panelRef={sidebarRef}
         onResize={handleDesktopSidebarResize}
       >
-        <AnimatedRightSidebar open={desktopSidebarVisualOpen} motionEnabled={desktopSidebarMotionEnabled}>
+        <AnimatedRightSidebar
+          open={desktopSidebarVisualOpen}
+          motionEnabled={desktopSidebarMotionEnabled}
+          className={enableRuntimeDock ? "overflow-hidden" : undefined}
+          contentClassName={enableRuntimeDock ? "h-full min-h-0 p-0 overflow-hidden" : undefined}
+        >
           {sidebarContent}
         </AnimatedRightSidebar>
       </ResizablePanel>

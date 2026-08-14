@@ -399,6 +399,7 @@
     "runtime_filter_all": "All",
     "runtime_loading": "Loading runtimes...",
     "runtime_none": "No runtime available",
+    "runtime_unbound": "None",
     "runtime_cloud_badge": "Cloud",
     "runtime_private_badge": "Private",
     "runtime_private_locked_tooltip": "Private runtime — only its owner can create agents on it. Ask the owner to switch it to Public to share.",

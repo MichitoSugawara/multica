@@ -6,14 +6,16 @@ import type { Issue, Label, TimelineEntry } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import { toast } from "sonner";
 import { useResolvedExpandStore } from "@multica/core/issues/stores/resolved-expand-store";
+import { useIssueDockStore } from "@multica/core/issues/stores/issue-dock-store";
 import {
   DEFAULT_SUB_ISSUE_ROW_PROPERTIES,
   useSubIssueDisplayStore,
 } from "@multica/core/issues/stores/sub-issue-display-store";
 import enCommon from "../../locales/en/common.json";
 import enIssues from "../../locales/en/issues.json";
+import enAgents from "../../locales/en/agents.json";
 
-const TEST_RESOURCES = { en: { common: enCommon, issues: enIssues } };
+const TEST_RESOURCES = { en: { common: enCommon, issues: enIssues, agents: enAgents } };
 
 const mockViewport = vi.hoisted(() => ({ isMobile: false }));
 
@@ -283,6 +285,8 @@ const mockApiObj = vi.hoisted(() => ({
   unsubscribeFromIssueSubtree: vi.fn().mockResolvedValue(undefined),
   getActiveTasksForIssue: vi.fn().mockResolvedValue({ tasks: [] }),
   listTasksByIssue: vi.fn().mockResolvedValue([]),
+  listRuntimes: vi.fn().mockResolvedValue([]),
+  listIssueRuntimeSessions: vi.fn().mockResolvedValue({ sessions: [] }),
   rerunIssue: vi.fn(),
   listTaskMessages: vi.fn().mockResolvedValue([]),
   listChildIssues: vi.fn().mockResolvedValue({ issues: [] }),
@@ -532,6 +536,7 @@ const mockIssue: Issue = {
   due_date: "2026-06-01T00:00:00Z",
   metadata: {},
   properties: {},
+  runtime_id: null,
   created_at: "2026-01-15T00:00:00Z",
   updated_at: "2026-01-20T00:00:00Z",
 };
@@ -639,6 +644,7 @@ describe("IssueDetail (shared)", () => {
     vi.clearAllMocks();
     contentEditorMounts.count = 0;
     mockViewport.isMobile = false;
+    useIssueDockStore.setState({ byIssue: {} });
     // Default: issue loads successfully
     mockApiObj.getIssue.mockResolvedValue(mockIssue);
     // /timeline returns the entries flat in chronological order (oldest first).
@@ -653,6 +659,8 @@ describe("IssueDetail (shared)", () => {
     mockApiObj.listIssues.mockResolvedValue({ issues: [], total: 0 });
     mockApiObj.getActiveTasksForIssue.mockResolvedValue({ tasks: [] });
     mockApiObj.listTasksByIssue.mockResolvedValue([]);
+    mockApiObj.listRuntimes.mockResolvedValue([]);
+    mockApiObj.listIssueRuntimeSessions.mockResolvedValue({ sessions: [] });
     mockApiObj.rerunIssue.mockResolvedValue({ id: "task-rerun" });
     mockApiObj.listMembers.mockResolvedValue([
       { user_id: "user-1", name: "Test User", email: "test@test.com", role: "admin" },
@@ -833,12 +841,13 @@ describe("IssueDetail (shared)", () => {
     renderIssueDetail();
 
     await waitFor(() => {
-      expect(screen.getByText("Properties")).toBeInTheDocument();
+      expect(screen.getAllByText("Properties").length).toBeGreaterThan(0);
     });
 
     // Core rows — always rendered regardless of whether the issue has a value.
     expect(screen.getByText("Status")).toBeInTheDocument();
     expect(screen.getByText("Assignee")).toBeInTheDocument();
+    expect(screen.queryByText("Runtime")).not.toBeInTheDocument();
     // "Project" appears twice (row label + picker stub), so disambiguate by id.
     expect(screen.getByTestId("project-picker")).toBeInTheDocument();
     // priority="high" + due_date are set in the fixture, so both optional rows show.
@@ -855,6 +864,29 @@ describe("IssueDetail (shared)", () => {
     expect(screen.getByText("Add property")).toBeInTheDocument();
   });
 
+  it("adds a Terminal pane from the runtime dock", async () => {
+    renderIssueDetail();
+    await screen.findAllByText("Properties");
+    fireEvent.click(screen.getByRole("button", { name: "Add panel" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Terminal" }));
+    expect(await screen.findByText("No machine connected")).toBeInTheDocument();
+  });
+
+  it("adds a Browser pane from the runtime dock", async () => {
+    renderIssueDetail();
+    await screen.findAllByText("Properties");
+    fireEvent.click(screen.getByRole("button", { name: "Add panel" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Browser" }));
+    expect(await screen.findByText("No machine connected")).toBeInTheDocument();
+  });
+
+  it("hides runtime tool tabs on mobile", async () => {
+    mockViewport.isMobile = true;
+    renderIssueDetail();
+    await screen.findByText("Implement authentication");
+    expect(screen.queryByRole("button", { name: "Add panel" })).not.toBeInTheDocument();
+  });
+
   it("hides every optional property row when none are set", async () => {
     // Override the default fixture: nothing optional set.
     mockApiObj.getIssue.mockResolvedValue({
@@ -867,7 +899,7 @@ describe("IssueDetail (shared)", () => {
     renderIssueDetail();
 
     await waitFor(() => {
-      expect(screen.getByText("Properties")).toBeInTheDocument();
+      expect(screen.getAllByText("Properties").length).toBeGreaterThan(0);
     });
 
     expect(screen.queryByText("Priority")).not.toBeInTheDocument();

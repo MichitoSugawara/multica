@@ -1042,3 +1042,30 @@ export function useUnsubscribeFromIssueSubtree(issueId: string) {
     },
   });
 }
+
+export function useCreateIssueRuntimeSession(issueId: string) {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (data: {
+      kind: "pty" | "browser";
+      daemon_id?: string | null;
+      runtime_id?: string | null;
+    }) => api.createIssueRuntimeSession(issueId, data),
+    onSuccess: (session) => {
+      if (!session.id) return;
+      qc.invalidateQueries({ queryKey: issueKeys.runtimeSessions(wsId, issueId) });
+    },
+  });
+}
+
+export function useCloseIssueRuntimeSession(issueId: string) {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (sessionId: string) => api.closeIssueRuntimeSession(issueId, sessionId),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.runtimeSessions(wsId, issueId) });
+    },
+  });
+}

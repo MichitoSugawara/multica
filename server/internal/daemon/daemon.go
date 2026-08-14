@@ -455,6 +455,10 @@ type Daemon struct {
 	// detached, callers fall back to HTTP.
 	wsRPC *wsRPCClient
 
+	// sessions owns interactive PTY / Chromium sessions opened for the issue
+	// runtime dock. Closed on WS detach so a reconnect cannot leak processes.
+	sessions *runtimeSessionManager
+
 	// batchClaimUnsupported is set once a batch claim gets a 404 from the
 	// server (no /api/daemon/tasks/claim route — an un-upgraded server), so
 	// subsequent polls skip WS+batch and use the legacy per-runtime claim
@@ -617,6 +621,7 @@ func New(cfg Config, logger *slog.Logger) *Daemon {
 		reconcile:                 newReconcileBroadcaster(),
 		workspaceChanges:          newWorkspaceChangeSignal(),
 		wsRPC:                     newWSRPCClient(wsRPCResponseGrace),
+		sessions:                  newRuntimeSessionManager(),
 	}
 	d.activeEnvRootsCond = sync.NewCond(&d.activeEnvRootsMu)
 	d.activeStoresCond = sync.NewCond(&d.activeStoresMu)

@@ -718,6 +718,22 @@ type IssueReaction struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type IssueRuntimeSession struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	IssueID      pgtype.UUID        `json:"issue_id"`
+	Kind         string             `json:"kind"`
+	DaemonID     string             `json:"daemon_id"`
+	RuntimeID    pgtype.UUID        `json:"runtime_id"`
+	OpenedBy     pgtype.UUID        `json:"opened_by"`
+	Status       string             `json:"status"`
+	Cwd          pgtype.Text        `json:"cwd"`
+	Url          pgtype.Text        `json:"url"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
+	ClosedAt     pgtype.Timestamptz `json:"closed_at"`
+}
+
 type IssueSubscriber struct {
 	IssueID        pgtype.UUID        `json:"issue_id"`
 	UserType       string             `json:"user_type"`

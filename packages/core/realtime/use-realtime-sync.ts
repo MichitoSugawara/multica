@@ -71,6 +71,7 @@ import type {
   IssueUpdatedPayload,
   IssueCreatedPayload,
   IssueDeletedPayload,
+  IssueRuntimeSessionChangedPayload,
   IssueAttachmentsChangedPayload,
   IssueLabelsChangedPayload,
   IssueMetadataChangedPayload,
@@ -916,7 +917,7 @@ export function useRealtimeSync(
     // Event types handled by specific handlers below -- skip generic refresh
     const specificEvents = new Set([
       "workspace:updated",
-      "issue:updated", "issue:created", "issue:deleted", "issue_attachments:changed", "issue_labels:changed", "issue_metadata:changed", "issue_properties:changed", "property:created", "property:updated", "inbox:new",
+      "issue:updated", "issue:created", "issue:deleted", "issue_runtime_session:created", "issue_runtime_session:updated", "issue_runtime_session:closed", "issue_attachments:changed", "issue_labels:changed", "issue_metadata:changed", "issue_properties:changed", "property:created", "property:updated", "inbox:new",
       "comment:created", "comment:updated", "comment:deleted",
       "comment:resolved", "comment:unresolved",
       "activity:created",
@@ -984,6 +985,18 @@ export function useRealtimeSync(
         onInboxIssueDeleted(qc, wsId, issue_id);
       }
     });
+
+    const invalidateRuntimeSessions = (p: unknown) => {
+      const { session } = p as IssueRuntimeSessionChangedPayload;
+      if (!session?.issue_id) return;
+      const wsId = getCurrentWsId();
+      if (wsId) {
+        qc.invalidateQueries({ queryKey: issueKeys.runtimeSessions(wsId, session.issue_id) });
+      }
+    };
+    const unsubRuntimeSessionCreated = ws.on("issue_runtime_session:created", invalidateRuntimeSessions);
+    const unsubRuntimeSessionUpdated = ws.on("issue_runtime_session:updated", invalidateRuntimeSessions);
+    const unsubRuntimeSessionClosed = ws.on("issue_runtime_session:closed", invalidateRuntimeSessions);
 
     const unsubIssueLabelsChanged = ws.on("issue_labels:changed", (p) => {
       const { issue_id, labels } = p as IssueLabelsChangedPayload;
@@ -1551,6 +1564,9 @@ export function useRealtimeSync(
       unsubIssueUpdated();
       unsubIssueCreated();
       unsubIssueDeleted();
+      unsubRuntimeSessionCreated();
+      unsubRuntimeSessionUpdated();
+      unsubRuntimeSessionClosed();
       unsubIssueAttachmentsChanged();
       unsubIssueLabelsChanged();
       unsubIssueMetadataChanged();

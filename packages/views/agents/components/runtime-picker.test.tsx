@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, screen } from "@testing-library/react";
 import type { MemberWithUser, RuntimeDevice } from "@multica/core/types";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
@@ -119,5 +119,23 @@ describe("RuntimePicker (creation studio)", () => {
       fireEvent.click(button);
     }
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("does not auto-fill an empty selection when allowEmpty is set", () => {
+    const { onSelect } = renderPicker({
+      selectedRuntimeId: "",
+      allowEmpty: true,
+    });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("offers a None row that clears the selection", () => {
+    const { container, onSelect } = renderPicker({
+      allowEmpty: true,
+      selectedRuntimeId: "rt-a",
+    });
+    fireEvent.click(trigger(container));
+    fireEvent.click(screen.getByRole("button", { name: "None" }));
+    expect(onSelect).toHaveBeenCalledWith("");
   });
 });

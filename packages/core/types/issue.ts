@@ -66,4 +66,29 @@ export interface Issue {
   labels?: Label[];
   created_at: string;
   updated_at: string;
+  /** Present on older backends that bound a runtime on the issue row. Unused. */
+  runtime_id?: string | null;
+}
+
+export type IssueRuntimeSessionKind = "pty" | "browser";
+export type IssueRuntimeSessionStatus = "open" | "closed";
+
+export interface IssueRuntimeSessionRecord {
+  id: string;
+  workspace_id: string;
+  issue_id: string;
+  kind: IssueRuntimeSessionKind | string;
+  daemon_id: string;
+  runtime_id: string;
+  opened_by: string;
+  status: IssueRuntimeSessionStatus | string;
+  cwd?: string | null;
+  url?: string | null;
+  created_at: string;
+  last_active_at: string;
+  closed_at?: string | null;
+}
+
+export interface ListIssueRuntimeSessionsResponse {
+  sessions: IssueRuntimeSessionRecord[];
 }

@@ -1,0 +1,1 @@
+ALTER TABLE issue ADD COLUMN IF NOT EXISTS runtime_id UUID;

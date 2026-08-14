@@ -22,6 +22,8 @@ export {
   type IssuesScopePageKey,
 } from "./issues-scope-store";
 export { useCommentCollapseStore } from "./comment-collapse-store";
+export { useIssueDockStore, ISSUE_DOCK_PROPERTIES_PANE_ID } from "./issue-dock-store";
+export type { IssueDockPane, IssueDockPaneKind, IssueDockPaneTarget } from "./issue-dock-store";
 export {
   useResolvedExpandStore,
   selectExpandedResolved,

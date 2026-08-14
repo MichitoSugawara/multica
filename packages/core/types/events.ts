@@ -1,4 +1,4 @@
-import type { Issue, IssueMetadata, IssueReaction } from "./issue";
+import type { Issue, IssueMetadata, IssueReaction, IssueRuntimeSessionRecord } from "./issue";
 import type { IssueProperty, IssuePropertyValues } from "./property";
 import type { Agent } from "./agent";
 import type { InboxItem } from "./inbox";
@@ -84,6 +84,9 @@ export type WSEventType =
   | "invitation:accepted"
   | "invitation:declined"
   | "invitation:revoked"
+  | "issue_runtime_session:created"
+  | "issue_runtime_session:updated"
+  | "issue_runtime_session:closed"
   | "github_installation:created"
   | "github_installation:deleted"
   | "pull_request:linked"
@@ -119,6 +122,10 @@ export interface IssueUpdatedPayload {
 
 export interface IssueDeletedPayload {
   issue_id: string;
+}
+
+export interface IssueRuntimeSessionChangedPayload {
+  session: IssueRuntimeSessionRecord;
 }
 
 export interface IssueLabelsChangedPayload {
@@ -508,6 +515,9 @@ export interface WSEventPayloadMap {
   "issue:created": IssueCreatedPayload;
   "issue:updated": IssueUpdatedPayload;
   "issue:deleted": IssueDeletedPayload;
+  "issue_runtime_session:created": IssueRuntimeSessionChangedPayload;
+  "issue_runtime_session:updated": IssueRuntimeSessionChangedPayload;
+  "issue_runtime_session:closed": IssueRuntimeSessionChangedPayload;
   "issue_attachments:changed": IssueAttachmentsChangedPayload;
   "issue_labels:changed": IssueLabelsChangedPayload;
   "issue_properties:changed": IssuePropertiesChangedPayload;

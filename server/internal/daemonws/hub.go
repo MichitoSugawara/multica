@@ -169,6 +169,21 @@ type HeartbeatHandler func(ctx context.Context, identity ClientIdentity, runtime
 // goroutine, so it must not assume it owns the read pump.
 type RPCHandler func(ctx context.Context, identity ClientIdentity, method string, body json.RawMessage) (status int, respBody json.RawMessage, err error)
 
+// SessionFrameHandler receives streaming session frames from a daemon (ready /
+// data / close / error). The handler must not block the read pump.
+type SessionFrameHandler func(identity ClientIdentity, msg protocol.Message)
+
+// HasCapability reports whether the comma-separated X-Client-Capabilities
+// header includes cap.
+func HasCapability(header, cap string) bool {
+	for _, part := range strings.Split(header, ",") {
+		if strings.TrimSpace(part) == cap {
+			return true
+		}
+	}
+	return false
+}
+
 // maxInFlightRPCPerClient bounds concurrent RPC handlers per connection so a
 // single daemon cannot fan out unbounded goroutines / DB work over one socket.
 const maxInFlightRPCPerClient = 8
@@ -197,6 +212,9 @@ type Hub struct {
 
 	rpcMu sync.RWMutex
 	onRPC RPCHandler
+
+	sessionMu      sync.RWMutex
+	onSessionFrame SessionFrameHandler
 
 	kindMu       sync.RWMutex
 	kindRecorder MessageKindRecorder
@@ -257,6 +275,72 @@ func (h *Hub) rpcHandler() RPCHandler {
 	return h.onRPC
 }
 
+func (h *Hub) SetSessionFrameHandler(fn SessionFrameHandler) {
+	if h == nil {
+		return
+	}
+	h.sessionMu.Lock()
+	h.onSessionFrame = fn
+	h.sessionMu.Unlock()
+}
+
+func (h *Hub) sessionFrameHandler() SessionFrameHandler {
+	h.sessionMu.RLock()
+	defer h.sessionMu.RUnlock()
+	return h.onSessionFrame
+}
+
+// TrySendToRuntime delivers a frame to every connection watching runtimeID
+// without event-id dedup and without evicting a slow client — streaming
+// session data is lossy on overflow rather than disconnecting the daemon.
+func (h *Hub) TrySendToRuntime(runtimeID string, data []byte) bool {
+	if h == nil || runtimeID == "" {
+		return false
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	sent := false
+	for c := range h.byRuntime[runtimeID] {
+		if c.trySend(data) {
+			sent = true
+		}
+	}
+	return sent
+}
+
+// TrySendToOneRuntime delivers a frame to a single live connection watching
+// runtimeID. Session open/attach/input must not fan out: two daemon sockets
+// for the same runtime would double-start a PTY or double-write keystrokes.
+func (h *Hub) TrySendToOneRuntime(runtimeID string, data []byte) bool {
+	if h == nil || runtimeID == "" {
+		return false
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.byRuntime[runtimeID] {
+		if c.trySend(data) {
+			return true
+		}
+	}
+	return false
+}
+
+// RuntimeHasCapability reports whether any live connection for runtimeID
+// advertised cap in X-Client-Capabilities.
+func (h *Hub) RuntimeHasCapability(runtimeID, cap string) bool {
+	if h == nil || runtimeID == "" {
+		return false
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.byRuntime[runtimeID] {
+		if HasCapability(c.identity.Capabilities, cap) {
+			return true
+		}
+	}
+	return false
+}
+
 // SetMessageKindRecorder installs an optional callback fired exactly once per
 // inbound daemon WebSocket frame. Used by the metrics layer to count traffic
 // by handler kind without hard-coupling the hub to any specific collector.
@@ -299,7 +383,7 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request, identity C
 	c := &client{
 		hub:      h,
 		conn:     conn,
-		send:     make(chan []byte, 16),
+		send:     make(chan []byte, 256),
 		identity: identity,
 		runtimes: runtimes,
 		rpcSem:   make(chan struct{}, maxInFlightRPCPerClient),
@@ -707,7 +791,7 @@ func (c *client) readPump() {
 
 	// Read limit sized for daemon:rpc_request frames carrying a machine's full
 	// runtime_id set (MUL-4257), well above the tiny heartbeat/wakeup frames.
-	c.conn.SetReadLimit(64 * 1024)
+	c.conn.SetReadLimit(1 << 20)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -747,6 +831,12 @@ func (c *client) handleFrame(raw []byte) {
 		c.handleHeartbeatFrame(msg.Payload)
 	case protocol.EventDaemonRPCRequest:
 		c.handleRPCFrame(msg.Payload)
+	case protocol.EventDaemonSessionReady, protocol.EventDaemonSessionData,
+		protocol.EventDaemonSessionClose, protocol.EventDaemonSessionError,
+		protocol.EventDaemonSessionSync:
+		if handler := c.hub.sessionFrameHandler(); handler != nil {
+			handler(c.identity, msg)
+		}
 	default:
 		// Unknown app messages are intentionally ignored for forward
 		// compatibility with future daemon → server message types.

@@ -34,6 +34,8 @@ import {
   InboxUnreadSummarySchema,
   IssueTriggerPreviewSchema,
   ListIssuesResponseSchema,
+  ListIssueRuntimeSessionsResponseSchema,
+  EMPTY_LIST_ISSUE_RUNTIME_SESSIONS,
   ListPropertiesResponseSchema,
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
   RuntimeModelListRequestSchema,
@@ -125,6 +127,21 @@ describe("IssueSchema (via ListIssuesResponseSchema)", () => {
     expect(parsed.issues[0]?.stage).toBeNull();
   });
 
+  it("defaults runtime_id to null when the server omits it (older backend)", () => {
+    const payload = { issues: [baseIssue], total: 1 };
+    const parsed = ListIssuesResponseSchema.parse(payload);
+    expect(parsed.issues[0]?.runtime_id).toBeNull();
+  });
+
+  it("accepts a bound runtime_id", () => {
+    const payload = {
+      issues: [{ ...baseIssue, runtime_id: "runtime-1" }],
+      total: 1,
+    };
+    const parsed = ListIssuesResponseSchema.parse(payload);
+    expect(parsed.issues[0]?.runtime_id).toBe("runtime-1");
+  });
+
   it("accepts custom property values including multi_select arrays", () => {
     const payload = {
       issues: [
@@ -165,6 +182,40 @@ describe("IssueSchema (via ListIssuesResponseSchema)", () => {
     };
     const parsed = ListIssuesResponseSchema.parse(payload);
     expect(parsed.issues[0]?.properties).toEqual({ "def-2": "opt-a" });
+  });
+});
+
+describe("ListIssueRuntimeSessionsResponseSchema", () => {
+  const session = {
+    id: "sess-1",
+    workspace_id: "ws-1",
+    issue_id: "issue-1",
+    kind: "pty",
+    daemon_id: "daemon-1",
+    runtime_id: "rt-1",
+    opened_by: "user-1",
+    status: "open",
+    cwd: "/tmp/work",
+    url: null,
+    created_at: "2026-01-01T00:00:00Z",
+    last_active_at: "2026-01-01T00:00:00Z",
+    closed_at: null,
+  };
+
+  it("parses a well-formed list", () => {
+    const parsed = ListIssueRuntimeSessionsResponseSchema.parse({ sessions: [session] });
+    expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.sessions[0]?.id).toBe("sess-1");
+  });
+
+  it("falls back to an empty list on a malformed payload", () => {
+    const parsed = parseWithFallback(
+      { sessions: "nope" },
+      ListIssueRuntimeSessionsResponseSchema,
+      EMPTY_LIST_ISSUE_RUNTIME_SESSIONS,
+      { endpoint: "GET /api/issues/:id/runtime-sessions" },
+    );
+    expect(parsed).toEqual(EMPTY_LIST_ISSUE_RUNTIME_SESSIONS);
   });
 });
 

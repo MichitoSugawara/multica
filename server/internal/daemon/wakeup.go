@@ -194,6 +194,7 @@ func (d *Daemon) runTaskWakeupConnection(ctx context.Context, runtimeIDs []strin
 	// A (re)connect may be a freshly-upgraded server: re-probe the batch claim
 	// route rather than staying on the legacy fallback forever (MUL-4257).
 	d.batchClaimUnsupported.Store(false)
+	d.sendLiveSessionSync()
 
 	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
 	hbDone := make(chan struct{})
@@ -227,9 +228,6 @@ func (d *Daemon) runTaskWakeupConnection(ctx context.Context, runtimeIDs []strin
 		// runWSWriter's next write errors and it DISCARDS the queue instead of
 		// delivering it.
 		conn.Close()
-		// Detach RPC (fails pending → HTTP fallback, now safe since the queued
-		// frame will be dropped), and flip the send-closed flag under sendMu so
-		// any in-flight guarded send finishes before we close writes.
 		d.wsRPC.attach(nil)
 		sendMu.Lock()
 		sendClosed = true
@@ -440,6 +438,12 @@ func (d *Daemon) readTaskWakeupMessagesForConnection(conn *websocket.Conn, taskW
 				continue
 			}
 			d.wsRPC.deliver(resp)
+		case protocol.EventDaemonSessionOpen, protocol.EventDaemonSessionAttach,
+			protocol.EventDaemonSessionInput, protocol.EventDaemonSessionResize,
+			protocol.EventDaemonSessionSubscribe, protocol.EventDaemonSessionClose:
+			// Own goroutine: PTY writes are fast, but Chromium CDP round-trips
+			// must not stall the read pump (heartbeats / claim frames).
+			go d.handleRuntimeSessionFrame(msg)
 		}
 	}
 }

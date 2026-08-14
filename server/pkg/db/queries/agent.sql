@@ -1840,6 +1840,17 @@ SELECT * FROM agent_task_queue
 WHERE issue_id = $1
 ORDER BY created_at DESC;
 
+-- name: GetLatestIssueTaskHint :one
+-- Newest task on this issue that still has a work_dir. Used to seed a PTY cwd
+-- for a shared issue runtime session. Empty result is expected.
+SELECT runtime_id, work_dir
+FROM agent_task_queue
+WHERE issue_id = $1
+  AND work_dir IS NOT NULL
+  AND work_dir <> ''
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- name: UpdateAgentStatus :one
 UPDATE agent SET status = $2, updated_at = now()
 WHERE id = $1

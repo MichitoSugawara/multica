@@ -3729,6 +3729,30 @@ func (q *Queries) GetLatestChatTaskRolloutMissing(ctx context.Context, chatSessi
 	return session_rollout_missing, err
 }
 
+const getLatestIssueTaskHint = `-- name: GetLatestIssueTaskHint :one
+SELECT runtime_id, work_dir
+FROM agent_task_queue
+WHERE issue_id = $1
+  AND work_dir IS NOT NULL
+  AND work_dir <> ''
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetLatestIssueTaskHintRow struct {
+	RuntimeID pgtype.UUID `json:"runtime_id"`
+	WorkDir   pgtype.Text `json:"work_dir"`
+}
+
+// Newest task on this issue that still has a work_dir. Used to seed a PTY cwd
+// for a shared issue runtime session. Empty result is expected.
+func (q *Queries) GetLatestIssueTaskHint(ctx context.Context, issueID pgtype.UUID) (GetLatestIssueTaskHintRow, error) {
+	row := q.db.QueryRow(ctx, getLatestIssueTaskHint, issueID)
+	var i GetLatestIssueTaskHintRow
+	err := row.Scan(&i.RuntimeID, &i.WorkDir)
+	return i, err
+}
+
 const getLatestTaskRoleForIssueAndAgent = `-- name: GetLatestTaskRoleForIssueAndAgent :one
 SELECT is_leader_task, squad_id FROM agent_task_queue
 WHERE issue_id = $1 AND agent_id = $2

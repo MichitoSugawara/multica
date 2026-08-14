@@ -156,6 +156,14 @@ func firstForwardedHost(h string) string {
 	return strings.TrimSpace(h)
 }
 
+// CheckOrigin is the shared WebSocket Origin policy used by realtime and
+// issue runtime sessions. Empty Origin is allowed for native clients;
+// browser Origins must match Host, a trusted X-Forwarded-Host, or the
+// allowlist. Rejections are logged.
+func CheckOrigin(r *http.Request) bool {
+	return checkOrigin(r)
+}
+
 func checkOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {

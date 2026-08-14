@@ -37,6 +37,11 @@ FOR UPDATE;
 SELECT * FROM agent_runtime
 WHERE id = $1 AND workspace_id = $2;
 
+-- name: ListAgentRuntimesByDaemon :many
+SELECT * FROM agent_runtime
+WHERE workspace_id = @workspace_id
+  AND daemon_id = @daemon_id;
+
 -- name: UpsertAgentRuntime :one
 -- (xmax = 0) AS inserted distinguishes a fresh insert (true) from an upsert
 -- that updated an existing row (false). Analytics reads this to fire

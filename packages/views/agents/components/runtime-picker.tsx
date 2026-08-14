@@ -37,6 +37,9 @@ export function RuntimePicker({
   selectedRuntimeId,
   onSelect,
   disabled = false,
+  allowEmpty = false,
+  hideLabel = false,
+  compact = false,
 }: {
   runtimes: RuntimeDevice[];
   runtimesLoading?: boolean;
@@ -47,6 +50,10 @@ export function RuntimePicker({
   /** Blocks opening the picker while the selection cannot be honoured yet
    *  (e.g. a builder reply or a runtime rebind is in flight). */
   disabled?: boolean;
+  /** When true, an empty selection is valid and is not auto-filled. */
+  allowEmpty?: boolean;
+  hideLabel?: boolean;
+  compact?: boolean;
 }) {
   const { t } = useT("agents");
   const [open, setOpen] = useState(false);
@@ -89,12 +96,13 @@ export function RuntimePicker({
   // when `selectedRuntimeId === ""` so a duplicate-mode pre-fill (template
   // runtime) is never silently overwritten.
   useEffect(() => {
+    if (allowEmpty) return;
     if (selectedRuntimeId !== "") return;
     const firstUsable = filteredRuntimes.find((r) =>
       isRuntimeUsableForUser(r, currentUserId),
     );
     if (firstUsable) onSelect(firstUsable.id);
-  }, [filteredRuntimes, selectedRuntimeId, currentUserId, onSelect]);
+  }, [allowEmpty, filteredRuntimes, selectedRuntimeId, currentUserId, onSelect]);
 
   // On filter toggle, recompute the picker's selection to a usable item
   // in the new filter set. Pushes `""` when nothing matches; the seeding
@@ -102,6 +110,7 @@ export function RuntimePicker({
   const handleFilterChange = (next: RuntimeFilter) => {
     if (next === filter) return;
     setFilter(next);
+    if (allowEmpty) return;
     const nextList = computeFilteredRuntimes(runtimes, next, currentUserId);
     const firstUsable = nextList.find((r) =>
       isRuntimeUsableForUser(r, currentUserId),
@@ -111,10 +120,13 @@ export function RuntimePicker({
 
   return (
     <div className="flex flex-col min-w-0">
+      {(!hideLabel || hasOtherRuntimes) && (
       <div className="flex h-6 items-center justify-between">
+        {!hideLabel && (
         <Label className="text-caption text-muted-foreground">
           {t(($) => $.create_dialog.runtime_label)}
         </Label>
+        )}
         {hasOtherRuntimes && (
           // These are not just a view filter: changing tab re-selects the first
           // usable runtime in the new list, so they are a second way to fire
@@ -147,6 +159,7 @@ export function RuntimePicker({
           </div>
         )}
       </div>
+      )}
       <Popover
         open={open && !disabled}
         onOpenChange={(next) => {
@@ -157,7 +170,11 @@ export function RuntimePicker({
       >
         <PopoverTrigger
           disabled={disabled || (runtimes.length === 0 && !runtimesLoading)}
-          className="flex w-full min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-body transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+          className={
+            compact
+              ? "flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-caption transition-colors hover:bg-accent/50 disabled:pointer-events-none disabled:opacity-50"
+              : "flex w-full min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-body transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+          }
         >
           {runtimesLoading ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
@@ -176,7 +193,9 @@ export function RuntimePicker({
                   ? t(($) => $.create_dialog.runtime_loading)
                   : selectedRuntime
                     ? runtimeDisplayName(selectedRuntime)
-                    : t(($) => $.create_dialog.runtime_none)}
+                    : allowEmpty
+                      ? t(($) => $.create_dialog.runtime_unbound)
+                      : t(($) => $.create_dialog.runtime_none)}
               </span>
               {selectedRuntime?.runtime_mode === "cloud" && (
                 <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-caption font-medium text-info">
@@ -184,7 +203,7 @@ export function RuntimePicker({
                 </span>
               )}
             </div>
-            {selectedRuntime && (
+            {selectedRuntime && !compact && (
               <div className="truncate text-caption text-muted-foreground">
                 {getOwnerMember(selectedRuntime.owner_id)?.name ??
                   selectedRuntime.device_info}
@@ -215,7 +234,24 @@ export function RuntimePicker({
             </div>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {machines.length === 0 ? (
+            {allowEmpty && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect("");
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-body transition-colors ${
+                  selectedRuntimeId === "" ? "bg-accent" : "hover:bg-accent/50"
+                }`}
+              >
+                <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate font-medium">
+                  {t(($) => $.create_dialog.runtime_unbound)}
+                </span>
+              </button>
+            )}
+            {machines.length === 0 && !allowEmpty ? (
               <div className="px-3 py-6 text-center text-caption text-muted-foreground">
                 {t(($) => $.create_dialog.runtime_no_results)}
               </div>

@@ -20,3 +20,4 @@ declare module "*.svg" {
   const src: string | StaticImageAsset;
   export default src;
 }
+declare module "@xterm/xterm/css/xterm.css";

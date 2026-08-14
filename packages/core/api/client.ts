@@ -6,6 +6,8 @@ import type {
   UpdateIssueRequest,
   GroupedIssuesResponse,
   ListIssuesResponse,
+  ListIssueRuntimeSessionsResponse,
+  IssueRuntimeSessionRecord,
   SearchIssuesResponse,
   SearchProjectsResponse,
   UpdateMeRequest,
@@ -216,6 +218,9 @@ import {
   SendChatMessageResponseSchema,
   StartMikaOnboardingResponseSchema,
   ChildIssuesResponseSchema,
+  ListIssueRuntimeSessionsResponseSchema,
+  IssueRuntimeSessionRecordSchema,
+  EMPTY_LIST_ISSUE_RUNTIME_SESSIONS,
   CommentsListSchema,
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
@@ -985,6 +990,61 @@ export class ApiClient {
     return parseWithFallback(raw, ChildIssuesResponseSchema, { issues: [] }, {
       endpoint: "GET /api/issues/:id/children",
     });
+  }
+
+  async listIssueRuntimeSessions(issueId: string): Promise<ListIssueRuntimeSessionsResponse> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/runtime-sessions`);
+    return parseWithFallback(raw, ListIssueRuntimeSessionsResponseSchema, EMPTY_LIST_ISSUE_RUNTIME_SESSIONS, {
+      endpoint: "GET /api/issues/:id/runtime-sessions",
+    });
+  }
+
+  async createIssueRuntimeSession(issueId: string, data: {
+    kind: "pty" | "browser";
+    daemon_id?: string | null;
+    runtime_id?: string | null;
+  }): Promise<IssueRuntimeSessionRecord> {
+    const raw = await this.fetch<unknown>(`/api/issues/${issueId}/runtime-sessions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, IssueRuntimeSessionRecordSchema, {
+      id: "",
+      workspace_id: "",
+      issue_id: issueId,
+      kind: data.kind,
+      daemon_id: data.daemon_id ?? "",
+      runtime_id: data.runtime_id ?? "",
+      opened_by: "",
+      status: "open",
+      cwd: null,
+      url: null,
+      created_at: "",
+      last_active_at: "",
+      closed_at: null,
+    }, { endpoint: "POST /api/issues/:id/runtime-sessions" });
+  }
+
+  async closeIssueRuntimeSession(issueId: string, sessionId: string): Promise<IssueRuntimeSessionRecord> {
+    const raw = await this.fetch<unknown>(
+      `/api/issues/${issueId}/runtime-sessions/${sessionId}/close`,
+      { method: "POST" },
+    );
+    return parseWithFallback(raw, IssueRuntimeSessionRecordSchema, {
+      id: sessionId,
+      workspace_id: "",
+      issue_id: issueId,
+      kind: "pty",
+      daemon_id: "",
+      runtime_id: "",
+      opened_by: "",
+      status: "closed",
+      cwd: null,
+      url: null,
+      created_at: "",
+      last_active_at: "",
+      closed_at: null,
+    }, { endpoint: "POST /api/issues/:id/runtime-sessions/:sessionId/close" });
   }
 
   /** Batched variant — returns children for multiple parents in one request.

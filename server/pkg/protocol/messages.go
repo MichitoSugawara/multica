@@ -26,6 +26,15 @@ const (
 	// everyone else keeps using the HTTP claim endpoint.
 	DaemonCapabilityRPCV1 = "rpc-v1"
 
+	// DaemonCapabilityPTYV1 advertises a Unix PTY that the server can relay
+	// for the issue Terminal dock. Windows daemons omit it.
+	DaemonCapabilityPTYV1 = "pty-v1"
+
+	// DaemonCapabilityBrowserV1 advertises a headless Chromium CDP screencast
+	// for the issue Browser dock. Presence does not guarantee Chrome is
+	// installed — a session.open still fails with chrome_missing if not.
+	DaemonCapabilityBrowserV1 = "browser-v1"
+
 	// AppCapabilityChatDraftRestoreV1 is advertised (X-Client-Capabilities) by
 	// app clients that understand the durable draft-restore recovery path:
 	// chat:cancel_finalized as an invalidation hint plus the draft-restores
@@ -381,4 +390,99 @@ type DaemonHeartbeatPendingLocalSkills struct {
 type DaemonHeartbeatPendingLocalSkillImport struct {
 	ID       string `json:"id"`
 	SkillKey string `json:"skill_key"`
+}
+
+const (
+	SessionKindPTY     = "pty"
+	SessionKindBrowser = "browser"
+)
+
+const (
+	SessionErrorNoRuntime      = "no_runtime"
+	SessionErrorRuntimeOffline = "runtime_offline"
+	SessionErrorDaemonOutdated = "daemon_outdated"
+	SessionErrorUnsupportedOS  = "unsupported_os"
+	SessionErrorChromeMissing  = "chrome_missing"
+	SessionErrorForbidden      = "forbidden"
+	SessionErrorOpenFailed     = "open_failed"
+	SessionErrorClosed         = "closed"
+	SessionErrorLimitReached   = "limit_reached"
+)
+
+// SessionOpenPayload is server→daemon: start a PTY or Chromium session.
+type SessionOpenPayload struct {
+	SessionID string `json:"session_id"`
+	Kind      string `json:"kind"`
+	IssueID   string `json:"issue_id"`
+	DaemonID  string `json:"daemon_id,omitempty"`
+	RuntimeID string `json:"runtime_id"`
+	Cwd       string `json:"cwd,omitempty"`
+	Cols      int    `json:"cols,omitempty"`
+	Rows      int    `json:"rows,omitempty"`
+	URL       string `json:"url,omitempty"`
+}
+
+// SessionReadyPayload is daemon→server (and then server→browser) after the
+// local resource is actually open. URL is set for browser sessions so an
+// attaching viewer can restore the address bar.
+type SessionReadyPayload struct {
+	SessionID string `json:"session_id"`
+	Kind      string `json:"kind"`
+	OS        string `json:"os,omitempty"`
+	URL       string `json:"url,omitempty"`
+}
+
+// SessionSubscribePayload toggles live screencast (or equivalent) for a
+// session. PTY output is cheap and stays subscribed; browser JPEG frames
+// are suppressed while unsubscribed so inactive tabs do not burn bandwidth.
+type SessionSubscribePayload struct {
+	SessionID  string `json:"session_id"`
+	Subscribed bool   `json:"subscribed"`
+}
+
+// SessionSyncPayload is daemon→server after a control WS (re)connect: the
+// session IDs still running on this machine. The server marks any other
+// open DB rows for this daemon as closed.
+type SessionSyncPayload struct {
+	SessionIDs []string `json:"session_ids"`
+}
+
+// SessionDataPayload carries PTY bytes (base64) or a JPEG screencast frame
+// (base64). Mime distinguishes the two.
+type SessionDataPayload struct {
+	SessionID string `json:"session_id"`
+	Kind      string `json:"kind"`
+	Mime      string `json:"mime"`
+	Data      string `json:"data"`
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+}
+
+// SessionInputPayload is browser→server→daemon. For PTY, Data is base64 of
+// the raw bytes. For Browser, Data is a JSON object (click / key / navigate).
+type SessionInputPayload struct {
+	SessionID string `json:"session_id"`
+	Kind      string `json:"kind"`
+	Data      string `json:"data"`
+}
+
+// SessionResizePayload is browser→server→daemon for PTY winsize and Browser
+// viewport.
+type SessionResizePayload struct {
+	SessionID string `json:"session_id"`
+	Cols      int    `json:"cols"`
+	Rows      int    `json:"rows"`
+}
+
+// SessionClosePayload tears down a session from either side.
+type SessionClosePayload struct {
+	SessionID string `json:"session_id"`
+	Reason    string `json:"reason,omitempty"`
+}
+
+// SessionErrorPayload is a terminal failure the UI can map to an empty state.
+type SessionErrorPayload struct {
+	SessionID string `json:"session_id"`
+	Code      string `json:"code"`
+	Message   string `json:"message,omitempty"`
 }

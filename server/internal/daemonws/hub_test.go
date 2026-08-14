@@ -690,6 +690,67 @@ type localFirstDaemonRelayPublisher struct {
 	localFrame []byte
 }
 
+func TestTrySendToOneRuntimeDoesNotFanOut(t *testing.T) {
+	M.Reset()
+	defer M.Reset()
+
+	hub := NewHub()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hub.HandleWebSocket(w, r, ClientIdentity{RuntimeIDs: []string{"runtime-1"}})
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	connA, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("Dial A: %v", err)
+	}
+	defer connA.Close()
+	connB, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("Dial B: %v", err)
+	}
+	defer connB.Close()
+
+	deadline := time.Now().Add(time.Second)
+	for hub.RuntimeConnectionCount("runtime-1") < 2 {
+		if time.Now().After(deadline) {
+			t.Fatal("expected two runtime connections")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	frame := []byte(`{"type":"daemon:session_open"}`)
+	if !hub.TrySendToOneRuntime("runtime-1", frame) {
+		t.Fatal("TrySendToOneRuntime returned false")
+	}
+
+	type result struct {
+		ok  bool
+		raw []byte
+	}
+	read := func(conn *websocket.Conn) result {
+		_ = conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			return result{}
+		}
+		return result{ok: true, raw: raw}
+	}
+	a := read(connA)
+	b := read(connB)
+	if a.ok == b.ok {
+		t.Fatalf("exactly one connection should receive the frame; a=%v b=%v", a.ok, b.ok)
+	}
+	got := a.raw
+	if b.ok {
+		got = b.raw
+	}
+	if string(got) != string(frame) {
+		t.Fatalf("frame = %s, want %s", got, frame)
+	}
+}
+
 func (p *localFirstDaemonRelayPublisher) PublishWithID(scopeType, scopeID, exclude string, frame []byte, id string) error {
 	p.called = true
 	p.scopeType = scopeType

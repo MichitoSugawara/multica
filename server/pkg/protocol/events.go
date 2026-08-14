@@ -155,6 +155,36 @@ const (
 	EventDaemonRPCRequest  = "daemon:rpc_request"
 	EventDaemonRPCResponse = "daemon:rpc_response"
 
+	// Interactive runtime sessions (issue Terminal / Browser dock). Streamed
+	// over the daemon control WS, not the request/response RPC channel, because
+	// PTY bytes and CDP screencast frames are continuous rather than one-shot.
+	EventDaemonSessionOpen      = "daemon:session_open"
+	EventDaemonSessionAttach    = "daemon:session_attach"
+	EventDaemonSessionReady     = "daemon:session_ready"
+	EventDaemonSessionData      = "daemon:session_data"
+	EventDaemonSessionInput     = "daemon:session_input"
+	EventDaemonSessionResize    = "daemon:session_resize"
+	EventDaemonSessionSubscribe = "daemon:session_subscribe"
+	EventDaemonSessionClose     = "daemon:session_close"
+	EventDaemonSessionError     = "daemon:session_error"
+	EventDaemonSessionSync      = "daemon:session_sync"
+
+	// Browser-client session frames on GET /api/issues/{id}/runtime-session.
+	EventSessionCreate    = "session.create"
+	EventSessionOpen      = "session.open" // alias of create; session_id from the client is ignored
+	EventSessionAttach    = "session.attach"
+	EventSessionReady     = "session.ready"
+	EventSessionData      = "session.data"
+	EventSessionInput     = "session.input"
+	EventSessionResize    = "session.resize"
+	EventSessionSubscribe = "session.subscribe"
+	EventSessionClose     = "session.close"
+	EventSessionError     = "session.error"
+
+	EventIssueRuntimeSessionCreated = "issue_runtime_session:created"
+	EventIssueRuntimeSessionUpdated = "issue_runtime_session:updated"
+	EventIssueRuntimeSessionClosed  = "issue_runtime_session:closed"
+
 	// GitHub integration events
 	EventGitHubInstallationCreated = "github_installation:created"
 	EventGitHubInstallationDeleted = "github_installation:deleted"
