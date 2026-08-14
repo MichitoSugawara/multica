@@ -143,6 +143,12 @@ func (d *Daemon) openBrowserSession(p protocol.SessionOpenPayload) {
 			}
 			if nav.Frame.ParentID == "" && nav.Frame.URL != "" {
 				currentURL.Store(nav.Frame.URL)
+				// In-page navigation (link clicks, redirects) never round-trips
+				// through the client, so the tab label would otherwise stay on
+				// whatever URL was typed in the address bar.
+				if title := browserSessionTitle(nav.Frame.URL); title != "" {
+					d.sendSessionTitle(p.SessionID, protocol.SessionKindBrowser, title)
+				}
 			}
 		case "Page.screencastFrame":
 			var frame struct {
@@ -623,4 +629,19 @@ func buttonOrLeft(button string) string {
 		return "left"
 	}
 	return button
+}
+
+// browserSessionTitle renders a page URL as a short tab label: the host, plus
+// the port when there is one so local dev servers stay distinguishable
+// ("localhost:3000" vs "localhost:8080").
+func browserSessionTitle(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "about:blank" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Host
 }

@@ -54,8 +54,10 @@ func (d *Daemon) openPTYSession(p protocol.SessionOpenPayload) {
 	}
 
 	var once sync.Once
+	titleDone := make(chan struct{})
 	cancel := func() {
 		once.Do(func() {
+			close(titleDone)
 			if cmd.Process != nil {
 				_ = cmd.Process.Kill()
 			}
@@ -88,6 +90,11 @@ func (d *Daemon) openPTYSession(p protocol.SessionOpenPayload) {
 	}
 	d.sessions.put(sess)
 	d.sendSessionReady(p.SessionID, protocol.SessionKindPTY, "")
+	shellPID := 0
+	if cmd.Process != nil {
+		shellPID = cmd.Process.Pid
+	}
+	go d.watchPTYTitle(p.SessionID, ptmx, shellPID, titleDone)
 
 	go func() {
 		defer cancel()

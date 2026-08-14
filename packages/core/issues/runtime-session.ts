@@ -37,10 +37,19 @@ export interface RuntimeSessionError {
   message?: string;
 }
 
+/** Display name for a session tab: the PTY's foreground command, or the
+ *  browser's current page. Cosmetic and never persisted. */
+export interface RuntimeSessionTitle {
+  session_id: string;
+  kind: RuntimeSessionKind;
+  title: string;
+}
+
 export interface RuntimeSessionHandlers {
   onReady?: (payload: RuntimeSessionReady) => void;
   onData?: (payload: RuntimeSessionData) => void;
   onError?: (payload: RuntimeSessionError) => void;
+  onTitle?: (payload: RuntimeSessionTitle) => void;
   onClose?: (reason?: string) => void;
 }
 
@@ -221,6 +230,9 @@ export class IssueRuntimeSession {
           break;
         case "session.data":
           this.handlers.onData?.(payload as unknown as RuntimeSessionData);
+          break;
+        case "session.title":
+          this.handlers.onTitle?.(payload as unknown as RuntimeSessionTitle);
           break;
         case "session.error":
           this.fail(

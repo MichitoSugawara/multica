@@ -15,6 +15,7 @@ import {
   CircleCheck,
   Milestone,
   MoreHorizontal,
+  PanelBottom,
   PanelRight,
   Pin,
   PinOff,
@@ -1122,6 +1123,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     handleResize: handleDesktopSidebarResize,
   } = useAnimatedRightSidebarState(desktopSidebarInitialOpen);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // Codex-style bottom panel (terminals). Session-local UI state — which
+  // sessions live down here is remembered per-issue by the dock store.
+  const [bottomDockOpen, setBottomDockOpen] = useState(false);
 
   useEffect(() => {
     if (isMobile) {
@@ -2614,6 +2618,23 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 </Button>
               }
             />
+            {enableTools && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant={bottomDockOpen ? "secondary" : "ghost"}
+                      size="icon-sm"
+                      className={bottomDockOpen ? "" : "text-muted-foreground"}
+                      onClick={() => setBottomDockOpen((open) => !open)}
+                    >
+                      <PanelBottom />
+                    </Button>
+                  }
+                />
+                <TooltipContent side="bottom">{t(($) => $.detail.bottom_dock_tooltip)}</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -3161,7 +3182,21 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   return (
     <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
       <ResizablePanel id="content" minSize="50%">
-        {detailContent}
+        {enableTools && bottomDockOpen ? (
+          <ResizablePanelGroup orientation="vertical" className="h-full min-h-0">
+            <ResizablePanel id="detail" minSize="30%">
+              {detailContent}
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel id="bottom-dock" defaultSize="35%" minSize={160}>
+              <div className="h-full min-h-0 border-t">
+                <IssueRightDock issue={issue} enableTools variant="bottom" />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          detailContent
+        )}
       </ResizablePanel>
       <ResizableHandle />
       <ResizablePanel

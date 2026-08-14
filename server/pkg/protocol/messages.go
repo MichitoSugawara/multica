@@ -447,6 +447,15 @@ type SessionSyncPayload struct {
 	SessionIDs []string `json:"session_ids"`
 }
 
+// SessionTitlePayload is daemon→server→browser when a session's display name
+// changes: the foreground command for a PTY, the page host for a browser.
+// Tab labels are cosmetic, so this is fire-and-forget and never persisted.
+type SessionTitlePayload struct {
+	SessionID string `json:"session_id"`
+	Kind      string `json:"kind"`
+	Title     string `json:"title"`
+}
+
 // SessionDataPayload carries PTY bytes (base64) or a JPEG screencast frame
 // (base64). Mime distinguishes the two.
 type SessionDataPayload struct {

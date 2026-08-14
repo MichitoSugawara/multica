@@ -48,6 +48,7 @@ type issueRuntimeSession struct {
 	clients     map[*websocket.Conn]*issueSessionClient
 	lastData    *protocol.Message
 	lastReady   *protocol.Message
+	lastTitle   *protocol.Message
 }
 
 type issueSessionClient struct {
@@ -101,6 +102,9 @@ func (hub *issueRuntimeSessionHub) attach(sessionID string, conn *websocket.Conn
 	}
 	if s.lastReady != nil {
 		replay = append(replay, *s.lastReady)
+	}
+	if s.lastTitle != nil {
+		replay = append(replay, *s.lastTitle)
 	}
 	hub.mu.Unlock()
 	for _, msg := range replay {
@@ -182,9 +186,13 @@ func (hub *issueRuntimeSessionHub) broadcast(sessionID string, v any) {
 		case protocol.EventSessionReady:
 			cp := msg
 			s.lastReady = &cp
+		case protocol.EventSessionTitle:
+			cp := msg
+			s.lastTitle = &cp
 		case protocol.EventSessionClose:
 			s.lastData = nil
 			s.lastReady = nil
+			s.lastTitle = nil
 		}
 	}
 	clients := make([]*issueSessionClient, 0, len(s.clients))

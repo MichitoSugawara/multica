@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Issue, RuntimeDevice } from "@multica/core/types";
 import type { IssueDockPane } from "@multica/core/issues/stores/issue-dock-store";
+import { useIssueDockStore } from "@multica/core/issues/stores/issue-dock-store";
 import {
   IssueRuntimeSession,
   type RuntimeSessionErrorCode,
@@ -15,6 +16,7 @@ type TerminalHandle = {
   dispose: () => void;
   focus: () => void;
   onData: (cb: (d: string) => void) => { dispose: () => void };
+  onTitleChange: (cb: (title: string) => void) => { dispose: () => void };
   cols: number;
   rows: number;
 };
@@ -34,6 +36,7 @@ export function DockTerminalPane({
   const termRef = useRef<TerminalHandle | null>(null);
   const fitRef = useRef<{ fit: () => void } | null>(null);
   const sessionRef = useRef<IssueRuntimeSession | null>(null);
+  const setSessionTitle = useIssueDockStore((s) => s.setSessionTitle);
   const [error, setError] = useState<RuntimeSessionErrorCode | string | null>(
     sessionBlockReason(pane, runtime),
   );
@@ -48,11 +51,17 @@ export function DockTerminalPane({
 
     let disposed = false;
     let dataDisposable: { dispose: () => void } | null = null;
+    let titleDisposable: { dispose: () => void } | null = null;
     const pending: string[] = [];
     setPhase("connecting");
 
     const session = new IssueRuntimeSession({
       onReady: () => setPhase("ready"),
+      // The daemon reports the PTY's foreground command. zsh on macOS only
+      // emits OSC title escapes under Terminal.app/iTerm, so a bare PTY never
+      // sends one — the xterm onTitleChange hook below stays as a bonus for
+      // shells that are configured to emit them.
+      onTitle: (payload) => setSessionTitle(pane.id, payload.title),
       onData: (payload) => {
         if (payload.kind !== "pty") return;
         const chunk = decodePTYData(payload.data);
@@ -90,7 +99,8 @@ export function DockTerminalPane({
 
         const terminal = new Terminal({
           cursorBlink: true,
-          fontSize: 12,
+          fontSize: 13,
+          lineHeight: 1.2,
           convertEol: true,
           cursorInactiveStyle: "outline",
         });
@@ -107,6 +117,11 @@ export function DockTerminalPane({
         pending.length = 0;
         dataDisposable = terminal.onData((data) => {
           session.sendInput(btoa(data), "pty");
+        });
+        // Codex-style live tab titles: shells emit OSC 0/2 title sequences
+        // (path, running command); xterm surfaces them as onTitleChange.
+        titleDisposable = handle.onTitleChange((title) => {
+          setSessionTitle(pane.id, title);
         });
         session.resize(terminal.cols || 80, terminal.rows || 24);
         if (active) terminal.focus();
@@ -126,6 +141,7 @@ export function DockTerminalPane({
       disposed = true;
       window.removeEventListener("resize", onResize);
       dataDisposable?.dispose();
+      titleDisposable?.dispose();
       sessionRef.current?.disconnect();
       sessionRef.current = null;
       termRef.current?.dispose();

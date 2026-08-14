@@ -375,6 +375,12 @@ func (h *Handler) HandleDaemonSessionFrame(identity daemonws.ClientIdentity, msg
 			return
 		}
 		h.runtimeSessions.broadcast(p.SessionID, protocol.Message{Type: protocol.EventSessionData, Payload: msg.Payload})
+	case protocol.EventDaemonSessionTitle:
+		var p protocol.SessionTitlePayload
+		if err := json.Unmarshal(msg.Payload, &p); err != nil {
+			return
+		}
+		h.runtimeSessions.broadcast(p.SessionID, protocol.Message{Type: protocol.EventSessionTitle, Payload: msg.Payload})
 	case protocol.EventDaemonSessionClose:
 		var p protocol.SessionClosePayload
 		if err := json.Unmarshal(msg.Payload, &p); err != nil {

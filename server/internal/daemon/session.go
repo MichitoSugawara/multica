@@ -285,6 +285,14 @@ func (d *Daemon) sendSessionClose(sessionID, reason string) {
 	d.sessions.take(sessionID)
 }
 
+func (d *Daemon) sendSessionTitle(sessionID, kind, title string) {
+	d.sendSessionJSON(protocol.EventDaemonSessionTitle, protocol.SessionTitlePayload{
+		SessionID: sessionID,
+		Kind:      kind,
+		Title:     title,
+	})
+}
+
 func (d *Daemon) sendLiveSessionSync() {
 	if d.sessions == nil {
 		return

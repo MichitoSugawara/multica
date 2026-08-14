@@ -41,6 +41,11 @@ function emptyCopy(
   t: ReturnType<typeof useT<"issues">>["t"],
 ): { title: string; body: string } {
   switch (code) {
+    case "bottom_empty":
+      return {
+        title: t(($) => $.detail.dock_bottom_empty_title),
+        body: t(($) => $.detail.dock_bottom_empty),
+      };
     case "no_runtime":
       return {
         title: t(($) => $.detail.session_no_runtime_title),

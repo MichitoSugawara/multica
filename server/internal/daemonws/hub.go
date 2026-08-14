@@ -833,7 +833,7 @@ func (c *client) handleFrame(raw []byte) {
 		c.handleRPCFrame(msg.Payload)
 	case protocol.EventDaemonSessionReady, protocol.EventDaemonSessionData,
 		protocol.EventDaemonSessionClose, protocol.EventDaemonSessionError,
-		protocol.EventDaemonSessionSync:
+		protocol.EventDaemonSessionSync, protocol.EventDaemonSessionTitle:
 		if handler := c.hub.sessionFrameHandler(); handler != nil {
 			handler(c.identity, msg)
 		}

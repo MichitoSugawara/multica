@@ -121,14 +121,14 @@ describe("IssueRightDock shared sessions", () => {
     closeMutate.mockReset();
   });
 
-  it("renders server sessions as tabs", () => {
+  it("renders server sessions as numbered tabs", () => {
     renderDock(
       [
         makeRuntime({ id: "rt-mac", daemon_id: "daemon-1", name: "Claude (MacBook)" }),
       ],
       [makeSession({ id: "sess-1", kind: "pty", daemon_id: "daemon-1" })],
     );
-    expect(screen.getByText("Terminal · MacBook")).toBeInTheDocument();
+    expect(screen.getByText("Terminal 1")).toBeInTheDocument();
   });
 
   it("explains a missing machine instead of creating a session", () => {

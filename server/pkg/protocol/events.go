@@ -168,6 +168,7 @@ const (
 	EventDaemonSessionClose     = "daemon:session_close"
 	EventDaemonSessionError     = "daemon:session_error"
 	EventDaemonSessionSync      = "daemon:session_sync"
+	EventDaemonSessionTitle     = "daemon:session_title"
 
 	// Browser-client session frames on GET /api/issues/{id}/runtime-session.
 	EventSessionCreate    = "session.create"
@@ -180,6 +181,7 @@ const (
 	EventSessionSubscribe = "session.subscribe"
 	EventSessionClose     = "session.close"
 	EventSessionError     = "session.error"
+	EventSessionTitle     = "session.title"
 
 	EventIssueRuntimeSessionCreated = "issue_runtime_session:created"
 	EventIssueRuntimeSessionUpdated = "issue_runtime_session:updated"

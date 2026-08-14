@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, RotateCw } from "lucide-react";
 import type { Issue, RuntimeDevice } from "@multica/core/types";
 import type { IssueDockPane } from "@multica/core/issues/stores/issue-dock-store";
+import { useIssueDockStore } from "@multica/core/issues/stores/issue-dock-store";
 import {
   IssueRuntimeSession,
   type RuntimeSessionErrorCode,
@@ -26,6 +27,7 @@ export function DockBrowserPane({
   const { t } = useT("issues");
   const imgRef = useRef<HTMLImageElement>(null);
   const sessionRef = useRef<IssueRuntimeSession | null>(null);
+  const setSessionTitle = useIssueDockStore((s) => s.setSessionTitle);
   const [url, setUrl] = useState("");
   const [error, setError] = useState<RuntimeSessionErrorCode | string | null>(
     sessionBlockReason(pane, runtime),
@@ -42,7 +44,10 @@ export function DockBrowserPane({
     const session = new IssueRuntimeSession({
       onReady: (payload) => {
         setPhase("ready");
-        if (payload.url) setUrl(payload.url);
+        if (payload.url) {
+          setUrl(payload.url);
+          setSessionTitle(pane.id, browserTabTitle(payload.url));
+        }
       },
       onData: (payload) => {
         if (payload.kind !== "browser" || !imgRef.current) return;
@@ -83,6 +88,11 @@ export function DockBrowserPane({
     sessionRef.current?.sendInput(btoa(JSON.stringify(payload)), "browser");
   };
 
+  const navigate = (target: string) => {
+    send({ type: "navigate", url: target });
+    setSessionTitle(pane.id, browserTabTitle(target));
+  };
+
   if (error) {
     return <DockEmptyState code={error === "closed" ? "open_failed" : error} />;
   }
@@ -93,26 +103,26 @@ export function DockBrowserPane({
         <DockConnectingState reconnecting={phase === "reconnecting"} />
       )}
       <form
-        className="flex shrink-0 items-center gap-1 border-b px-2 py-1"
+        className="flex h-10 shrink-0 items-center gap-1 border-b px-2"
         onSubmit={(e) => {
           e.preventDefault();
-          send({ type: "navigate", url });
+          navigate(url);
         }}
       >
-        <button type="button" className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_back)} onClick={() => send({ type: "back" })}>
-          <ArrowLeft className="size-3.5" />
+        <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_back)} onClick={() => send({ type: "back" })}>
+          <ArrowLeft className="size-4" />
         </button>
-        <button type="button" className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_forward)} onClick={() => send({ type: "forward" })}>
-          <ArrowRight className="size-3.5" />
+        <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_forward)} onClick={() => send({ type: "forward" })}>
+          <ArrowRight className="size-4" />
         </button>
-        <button type="button" className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_reload)} onClick={() => send({ type: "reload" })}>
-          <RotateCw className="size-3.5" />
+        <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={t(($) => $.detail.browser_reload)} onClick={() => send({ type: "reload" })}>
+          <RotateCw className="size-4" />
         </button>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t(($) => $.detail.browser_address_placeholder)}
-          className="h-7 min-w-0 flex-1 rounded-md border bg-background px-2 text-caption outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-7 min-w-0 flex-1 rounded-md border bg-muted/40 px-2.5 text-label outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </form>
       <div
@@ -150,4 +160,18 @@ export function DockBrowserPane({
       </div>
     </div>
   );
+}
+
+/* Codex-style browser tab label: the page host (plus port for localhost dev
+   servers) is short and recognizable — "localhost:3000", "github.com". Falls
+   back to the raw string when the input is not yet a parseable URL. */
+export function browserTabTitle(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    return parsed.port ? `${parsed.hostname}:${parsed.port}` : parsed.hostname;
+  } catch {
+    return trimmed;
+  }
 }
