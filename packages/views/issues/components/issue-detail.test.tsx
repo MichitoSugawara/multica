@@ -498,6 +498,9 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
+const copyTextMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+vi.mock("@multica/ui/lib/clipboard", () => ({ copyText: copyTextMock }));
+
 // Mock react-resizable-panels (used by @multica/ui/components/ui/resizable)
 vi.mock("react-resizable-panels", () => ({
   Group: ({ children, ...props }: any) => <div data-testid="panel-group" {...props}>{children}</div>,
@@ -637,6 +640,7 @@ function hasHighlightedCommentBackground(root: ParentNode | null): boolean {
 describe("IssueDetail (shared)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    copyTextMock.mockResolvedValue(true);
     contentEditorMounts.count = 0;
     mockViewport.isMobile = false;
     // Default: issue loads successfully
@@ -726,6 +730,18 @@ describe("IssueDetail (shared)", () => {
     expect(screen.queryByTestId("title-editor")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("rich-text-editor")).toHaveLength(1);
     expect(contentEditorMounts.count).toBe(1);
+  });
+
+  it("copies the description markdown from the toolbar button", async () => {
+    renderIssueDetail();
+
+    const copyButton = await screen.findByRole("button", { name: "Copy description" });
+    fireEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(copyTextMock).toHaveBeenCalledWith("Add JWT auth to the backend");
+    });
+    expect(toast.success).toHaveBeenCalledWith("Description copied");
   });
 
   it("opts the description editor into the unmount flush", async () => {
