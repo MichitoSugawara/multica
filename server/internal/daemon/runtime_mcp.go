@@ -78,6 +78,74 @@ func mergeRuntimeAndAgentMcpConfig(provider string, agentConfig json.RawMessage)
 	return raw, nil
 }
 
+// SessionMcpDisableEnv is the daemon-environment kill switch for injecting
+// the shared-pane MCP server into managed agents. Set to a truthy value to
+// keep agent MCP configs exactly as the user wrote them.
+const SessionMcpDisableEnv = "MULTICA_DISABLE_SESSION_MCP"
+
+const sessionMcpServerName = "multica-session"
+
+// injectSessionMcpServer adds the `multica-session` stdio MCP server (the
+// issue's shared Terminal/Browser panes — `multica session-mcp`) to a task's
+// effective MCP config. selfExe is the daemon's own multica binary, so the
+// tool works without a PATH-installed CLI. The entry carries no secrets: the
+// subprocess inherits MULTICA_TOKEN / MULTICA_SERVER_URL / MULTICA_ISSUE_ID
+// from the agent's task environment.
+//
+// When the agent has no mcp_config of its own, the injected entry is routed
+// through mergeRuntimeAndAgentMcpConfig so runtime-level servers stay in the
+// materialized config for providers whose adapters replace native
+// inheritance (Claude's --strict-mcp-config and friends).
+//
+// A user-defined server with the same name always wins: injection never
+// overwrites an existing entry.
+func injectSessionMcpServer(provider string, effectiveConfig json.RawMessage, selfExe string) (json.RawMessage, error) {
+	if strings.TrimSpace(selfExe) == "" {
+		return effectiveConfig, nil
+	}
+	if v := strings.TrimSpace(os.Getenv(SessionMcpDisableEnv)); v != "" && v != "0" && !strings.EqualFold(v, "false") {
+		return effectiveConfig, nil
+	}
+	entry := map[string]any{
+		"command": selfExe,
+		"args":    []string{"session-mcp"},
+	}
+
+	trimmed := bytes.TrimSpace(effectiveConfig)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		seeded, err := json.Marshal(map[string]any{
+			"mcpServers": map[string]any{sessionMcpServerName: entry},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("marshal session MCP seed: %w", err)
+		}
+		merged, err := mergeRuntimeAndAgentMcpConfig(provider, seeded)
+		if err != nil {
+			return nil, err
+		}
+		return merged, nil
+	}
+
+	var document map[string]any
+	if err := json.Unmarshal(trimmed, &document); err != nil {
+		return nil, fmt.Errorf("parse effective MCP config: %w", err)
+	}
+	servers, ok := nestedRuntimeMcpMap(document, "mcpServers")
+	if !ok {
+		servers = map[string]any{}
+	}
+	if _, exists := servers[sessionMcpServerName]; exists {
+		return effectiveConfig, nil
+	}
+	servers[sessionMcpServerName] = entry
+	document["mcpServers"] = servers
+	raw, err := json.Marshal(document)
+	if err != nil {
+		return nil, fmt.Errorf("marshal session MCP config: %w", err)
+	}
+	return raw, nil
+}
+
 // codebuddyUserMcpConfigPath returns the user-scope MCP config file CodeBuddy
 // actually reads.
 //

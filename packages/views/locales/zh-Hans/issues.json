@@ -339,6 +339,7 @@
     "browser_back": "后退",
     "browser_forward": "前进",
     "browser_reload": "刷新",
+    "browser_open_external": "在默认浏览器中打开",
     "prop_created_by": "创建者",
     "prop_created": "创建时间",
     "prop_updated": "更新时间",

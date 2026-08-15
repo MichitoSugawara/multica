@@ -89,7 +89,7 @@ import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useRecentContextStore } from "@multica/core/chat";
-import { issueListOptions, issueDetailOptions, issueRuntimeSessionsOptions, childIssuesOptions, childIssueProgressOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
+import { issueListOptions, issueDetailOptions, childIssuesOptions, childIssueProgressOptions, issueAttachmentsOptions } from "@multica/core/issues/queries";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
@@ -1294,14 +1294,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       return cached?.description != null ? cached : undefined;
     },
   });
-  // Dock panes are keyed by the issue UUID, which may differ from the route
-  // param (identifier). Fall back to the route id until detail has loaded.
-  const { data: runtimeSessions } = useQuery({
-    ...issueRuntimeSessionsOptions(wsId, issue?.id ?? id),
-    enabled: Boolean(enableRuntimeDock && (issue?.id ?? id)),
-  });
-  const hasToolPane = (runtimeSessions?.sessions.length ?? 0) > 0;
-
   // Record recent visit
   const recordVisit = useRecentIssuesStore((s) => s.recordVisit);
   const recordRecentContext = useRecentContextStore((s) => s.recordVisit);
@@ -3181,7 +3173,14 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   return (
     <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
-      <ResizablePanel id="content" minSize="50%">
+      {/* Sizing ported from Synara's thread drawer: the pane grows up to
+          `calc(100% - 320px)` — the content column only reserves a fixed
+          320px minimum instead of half the window, so a browser/terminal
+          pane can take almost the full width. The bounds must not depend on
+          async data (e.g. whether a session exists yet): constraint changes
+          make the library re-clamp the restored layout, which silently
+          snapped a widened sidebar back to the old cap on every mount. */}
+      <ResizablePanel id="content" minSize={enableRuntimeDock ? 320 : "50%"}>
         {enableTools && bottomDockOpen ? (
           <ResizablePanelGroup orientation="vertical" className="h-full min-h-0">
             <ResizablePanel id="detail" minSize="30%">
@@ -3205,7 +3204,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
         defaultSize={desktopSidebarOpen ? 320 : 0}
         minSize={260}
-        maxSize={enableRuntimeDock && hasToolPane ? 900 : 420}
+        // The content panel's 320px minimum is the only cap (Synara-style).
+        // Keyed on the static prop, not on live session data — see the
+        // comment on the content panel.
+        maxSize={enableRuntimeDock ? undefined : 420}
         collapsible
         groupResizeBehavior="preserve-pixel-size"
         panelRef={sidebarRef}

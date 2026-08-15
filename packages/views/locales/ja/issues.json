@@ -339,6 +339,7 @@
     "browser_back": "戻る",
     "browser_forward": "進む",
     "browser_reload": "再読み込み",
+    "browser_open_external": "既定のブラウザで開く",
     "prop_created_by": "作成者",
     "prop_created": "作成日",
     "prop_updated": "更新日",

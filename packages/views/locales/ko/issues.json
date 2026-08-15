@@ -339,6 +339,7 @@
     "browser_back": "뒤로",
     "browser_forward": "앞으로",
     "browser_reload": "새로고침",
+    "browser_open_external": "기본 브라우저에서 열기",
     "prop_created_by": "생성자",
     "prop_created": "생성일",
     "prop_updated": "수정일",

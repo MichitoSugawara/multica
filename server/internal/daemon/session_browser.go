@@ -149,6 +149,10 @@ func (d *Daemon) openBrowserSession(p protocol.SessionOpenPayload) {
 				if title := browserSessionTitle(nav.Frame.URL); title != "" {
 					d.sendSessionTitle(p.SessionID, protocol.SessionKindBrowser, title)
 				}
+				// Re-announce ready with the new URL so every attached viewer's
+				// address bar follows link clicks and redirects — the same reason
+				// DevTools' screencast refreshes its URL bar on frameNavigated.
+				d.sendSessionReady(p.SessionID, protocol.SessionKindBrowser, nav.Frame.URL)
 			}
 		case "Page.screencastFrame":
 			var frame struct {
@@ -546,17 +550,19 @@ func (c *cdpConn) readLoop() error {
 }
 
 type browserInput struct {
-	Type      string  `json:"type"`
-	X         float64 `json:"x"`
-	Y         float64 `json:"y"`
-	Button    string  `json:"button"`
-	Key       string  `json:"key"`
-	Code      string  `json:"code"`
-	Text      string  `json:"text"`
-	URL       string  `json:"url"`
-	DeltaX    float64 `json:"deltaX"`
-	DeltaY    float64 `json:"deltaY"`
-	Modifiers int     `json:"modifiers"`
+	Type       string  `json:"type"`
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Button     string  `json:"button"`
+	ClickCount int     `json:"clickCount"`
+	Key        string  `json:"key"`
+	Code       string  `json:"code"`
+	KeyCode    int     `json:"keyCode"`
+	Text       string  `json:"text"`
+	URL        string  `json:"url"`
+	DeltaX     float64 `json:"deltaX"`
+	DeltaY     float64 `json:"deltaY"`
+	Modifiers  int     `json:"modifiers"`
 }
 
 func handleBrowserInput(cdp *cdpConn, data string) {
@@ -586,10 +592,15 @@ func handleBrowserInput(cdp *cdpConn, data string) {
 		_ = cdp.call("Page.reload", map[string]any{})
 	case "click", "mousedown", "mouseup", "mousemove":
 		typ := "mouseMoved"
+		clicks := in.ClickCount
+		if clicks <= 0 {
+			clicks = 1
+		}
 		switch in.Type {
 		case "click":
 			_ = cdp.call("Input.dispatchMouseEvent", map[string]any{
-				"type": "mousePressed", "x": in.X, "y": in.Y, "button": buttonOrLeft(in.Button), "clickCount": 1,
+				"type": "mousePressed", "x": in.X, "y": in.Y, "button": buttonOrLeft(in.Button),
+				"clickCount": clicks, "modifiers": in.Modifiers,
 			})
 			typ = "mouseReleased"
 		case "mousedown":
@@ -597,12 +608,21 @@ func handleBrowserInput(cdp *cdpConn, data string) {
 		case "mouseup":
 			typ = "mouseReleased"
 		}
-		_ = cdp.call("Input.dispatchMouseEvent", map[string]any{
-			"type": typ, "x": in.X, "y": in.Y, "button": buttonOrLeft(in.Button), "clickCount": 1,
-		})
+		params := map[string]any{
+			"type": typ, "x": in.X, "y": in.Y, "modifiers": in.Modifiers,
+		}
+		// mouseMoved with a button set would look like a held drag to the page,
+		// so only pressed/released events carry button + clickCount (matches
+		// DevTools' InputModel.emitMouseEvent behaviour).
+		if typ != "mouseMoved" {
+			params["button"] = buttonOrLeft(in.Button)
+			params["clickCount"] = clicks
+		}
+		_ = cdp.call("Input.dispatchMouseEvent", params)
 	case "scroll":
 		_ = cdp.call("Input.dispatchMouseEvent", map[string]any{
-			"type": "mouseWheel", "x": in.X, "y": in.Y, "deltaX": in.DeltaX, "deltaY": in.DeltaY,
+			"type": "mouseWheel", "x": in.X, "y": in.Y,
+			"deltaX": in.DeltaX, "deltaY": in.DeltaY, "modifiers": in.Modifiers,
 		})
 	case "keydown", "keyup":
 		typ := "keyDown"
@@ -613,7 +633,8 @@ func handleBrowserInput(cdp *cdpConn, data string) {
 			"type":                  typ,
 			"key":                   in.Key,
 			"code":                  in.Code,
-			"windowsVirtualKeyCode": 0,
+			"windowsVirtualKeyCode": in.KeyCode,
+			"nativeVirtualKeyCode":  in.KeyCode,
 			"modifiers":             in.Modifiers,
 		}
 		if in.Text != "" && in.Type == "keydown" {
@@ -621,6 +642,13 @@ func handleBrowserInput(cdp *cdpConn, data string) {
 			params["type"] = "keyDown"
 		}
 		_ = cdp.call("Input.dispatchKeyEvent", params)
+	case "insertText":
+		// Clipboard paste: Input.insertText types the whole string at once
+		// without synthesizing per-character key events.
+		if in.Text == "" {
+			return
+		}
+		_ = cdp.call("Input.insertText", map[string]any{"text": in.Text})
 	}
 }
 

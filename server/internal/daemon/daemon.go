@@ -134,7 +134,7 @@ func taskScopedAuthToken(task Task) (string, error) {
 }
 
 func taskMulticaEnvironment(task Task, agentName, token, configRoot, workspacesRoot, serverURL string, healthPort, slot int, tempDir string) map[string]string {
-	return map[string]string{
+	env := map[string]string{
 		"MULTICA_TOKEN":        token,
 		cli.TaskConfigRootEnv:  configRoot,
 		TaskWorkspacesRootEnv:  workspacesRoot,
@@ -149,6 +149,14 @@ func taskMulticaEnvironment(task Task, agentName, token, configRoot, workspacesR
 		"TMP":                  tempDir,
 		"TEMP":                 tempDir,
 	}
+	// The issue this task works on, so `multica issue terminal/browser` and
+	// the session MCP tools can default their target without an extra API
+	// round-trip. Chat/leader tasks have no issue; omit rather than export
+	// an empty variable.
+	if task.IssueID != "" {
+		env["MULTICA_ISSUE_ID"] = task.IssueID
+	}
+	return env
 }
 
 // taskRunner executes a single agent task and returns the result.
@@ -6101,6 +6109,19 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			)
 		} else {
 			effectiveMcpConfig = merged
+		}
+		// Shared-pane MCP: give the agent tools for the issue's Terminal /
+		// Browser panes (`multica session-mcp`) so its work stays visible in
+		// the UI. Fail soft — a broken injection must never block dispatch.
+		if selfBin, selfErr := resolveSelfExecutable(); selfErr == nil {
+			if injected, injectErr := injectSessionMcpServer(provider, effectiveMcpConfig, selfBin); injectErr != nil {
+				taskLog.Warn("mcp_config: session MCP injection failed; continuing without shared-pane tools",
+					"provider", provider,
+					"error", injectErr,
+				)
+			} else {
+				effectiveMcpConfig = injected
+			}
 		}
 		if provider == "cursor" {
 			cursorMcpAuthSource = strings.TrimSpace(task.Agent.CustomEnv[execenv.CursorMcpAuthSourceEnv])

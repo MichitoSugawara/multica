@@ -342,6 +342,7 @@
     "browser_back": "Back",
     "browser_forward": "Forward",
     "browser_reload": "Reload",
+    "browser_open_external": "Open in default browser",
     "prop_created_by": "Created by",
     "prop_created": "Created",
     "prop_updated": "Updated",
