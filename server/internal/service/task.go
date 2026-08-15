@@ -42,6 +42,9 @@ type TaskService struct {
 	Analytics analytics.Client
 	Metrics   *obsmetrics.BusinessMetrics
 	Wakeup    TaskWakeupNotifier
+	// SessionCloser releases the issue's shared Terminal / Browser panes when
+	// a run is cancelled. Optional; nil falls back to the idle TTL sweeper.
+	SessionCloser TaskSessionCloser
 	// FeatureFlags is the server-side toggle router. Nil is valid and returns
 	// each call site's default.
 	FeatureFlags *featureflag.Service
@@ -101,6 +104,16 @@ type ComposioOverlayBuilder interface {
 
 type TaskWakeupNotifier interface {
 	NotifyTaskAvailable(runtimeID, taskID string)
+}
+
+// TaskSessionCloser releases the shared issue panes (Terminal / Browser) an
+// agent run opened, once that run is terminal. Implemented by the handler
+// layer, which owns the session hub and the daemon connections; the service
+// only knows the task id. Optional — a nil closer leaves pane cleanup to the
+// idle TTL sweeper, which is what tests and the completion/failure HTTP paths
+// (they call the handler directly) rely on.
+type TaskSessionCloser interface {
+	CloseIssueRuntimeSessionsForTask(ctx context.Context, taskID pgtype.UUID)
 }
 
 // triggerSummaryMaxLen caps the snapshot length so the row stays cheap to
@@ -2424,6 +2437,12 @@ func (s *TaskService) CancelTaskWithResult(ctx context.Context, taskID pgtype.UU
 
 	slog.Info("task cancelled", "task_id", util.UUIDToString(task.ID), "issue_id", util.UUIDToString(task.IssueID))
 	s.captureTaskCancelled(ctx, task)
+	// Release the shared panes this run opened. Cancellation is the path most
+	// likely to strand them: the agent process is killed mid-flight, so it
+	// never gets to call terminal_close itself.
+	if s.SessionCloser != nil {
+		s.SessionCloser.CloseIssueRuntimeSessionsForTask(ctx, task.ID)
+	}
 	if !opts.QueuedOnly {
 		cancelledChatMessage = s.finalizeCancelledChatMessage(ctx, task, opts)
 	}

@@ -15,7 +15,7 @@ const closeIssueRuntimeSession = `-- name: CloseIssueRuntimeSession :one
 UPDATE issue_runtime_session
 SET status = 'closed', closed_at = now()
 WHERE id = $1 AND status = 'open'
-RETURNING id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at
+RETURNING id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task
 `
 
 func (q *Queries) CloseIssueRuntimeSession(ctx context.Context, id pgtype.UUID) (IssueRuntimeSession, error) {
@@ -35,6 +35,7 @@ func (q *Queries) CloseIssueRuntimeSession(ctx context.Context, id pgtype.UUID) 
 		&i.CreatedAt,
 		&i.LastActiveAt,
 		&i.ClosedAt,
+		&i.OpenedByTask,
 	)
 	return i, err
 }
@@ -68,24 +69,25 @@ func (q *Queries) CountOpenIssueRuntimeSessionsByIssue(ctx context.Context, issu
 const createIssueRuntimeSession = `-- name: CreateIssueRuntimeSession :one
 INSERT INTO issue_runtime_session (
     id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by,
-    status, cwd, url, last_active_at
+    status, cwd, url, opened_by_task, last_active_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    'open', $8, $9, now()
+    'open', $8, $9, $10, now()
 )
-RETURNING id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at
+RETURNING id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task
 `
 
 type CreateIssueRuntimeSessionParams struct {
-	ID          pgtype.UUID `json:"id"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	IssueID     pgtype.UUID `json:"issue_id"`
-	Kind        string      `json:"kind"`
-	DaemonID    string      `json:"daemon_id"`
-	RuntimeID   pgtype.UUID `json:"runtime_id"`
-	OpenedBy    pgtype.UUID `json:"opened_by"`
-	Cwd         pgtype.Text `json:"cwd"`
-	Url         pgtype.Text `json:"url"`
+	ID           pgtype.UUID `json:"id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	IssueID      pgtype.UUID `json:"issue_id"`
+	Kind         string      `json:"kind"`
+	DaemonID     string      `json:"daemon_id"`
+	RuntimeID    pgtype.UUID `json:"runtime_id"`
+	OpenedBy     pgtype.UUID `json:"opened_by"`
+	Cwd          pgtype.Text `json:"cwd"`
+	Url          pgtype.Text `json:"url"`
+	OpenedByTask pgtype.UUID `json:"opened_by_task"`
 }
 
 func (q *Queries) CreateIssueRuntimeSession(ctx context.Context, arg CreateIssueRuntimeSessionParams) (IssueRuntimeSession, error) {
@@ -99,6 +101,7 @@ func (q *Queries) CreateIssueRuntimeSession(ctx context.Context, arg CreateIssue
 		arg.OpenedBy,
 		arg.Cwd,
 		arg.Url,
+		arg.OpenedByTask,
 	)
 	var i IssueRuntimeSession
 	err := row.Scan(
@@ -115,12 +118,13 @@ func (q *Queries) CreateIssueRuntimeSession(ctx context.Context, arg CreateIssue
 		&i.CreatedAt,
 		&i.LastActiveAt,
 		&i.ClosedAt,
+		&i.OpenedByTask,
 	)
 	return i, err
 }
 
 const getIssueRuntimeSession = `-- name: GetIssueRuntimeSession :one
-SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at FROM issue_runtime_session
+SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task FROM issue_runtime_session
 WHERE id = $1 AND issue_id = $2
 `
 
@@ -146,12 +150,13 @@ func (q *Queries) GetIssueRuntimeSession(ctx context.Context, arg GetIssueRuntim
 		&i.CreatedAt,
 		&i.LastActiveAt,
 		&i.ClosedAt,
+		&i.OpenedByTask,
 	)
 	return i, err
 }
 
 const listIdleOpenIssueRuntimeSessions = `-- name: ListIdleOpenIssueRuntimeSessions :many
-SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at FROM issue_runtime_session
+SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task FROM issue_runtime_session
 WHERE status = 'open' AND last_active_at < $1
 ORDER BY last_active_at ASC
 LIMIT 100
@@ -180,6 +185,7 @@ func (q *Queries) ListIdleOpenIssueRuntimeSessions(ctx context.Context, lastActi
 			&i.CreatedAt,
 			&i.LastActiveAt,
 			&i.ClosedAt,
+			&i.OpenedByTask,
 		); err != nil {
 			return nil, err
 		}
@@ -192,7 +198,7 @@ func (q *Queries) ListIdleOpenIssueRuntimeSessions(ctx context.Context, lastActi
 }
 
 const listOpenIssueRuntimeSessions = `-- name: ListOpenIssueRuntimeSessions :many
-SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at FROM issue_runtime_session
+SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task FROM issue_runtime_session
 WHERE issue_id = $1 AND status = 'open'
 ORDER BY created_at ASC
 `
@@ -220,6 +226,7 @@ func (q *Queries) ListOpenIssueRuntimeSessions(ctx context.Context, issueID pgty
 			&i.CreatedAt,
 			&i.LastActiveAt,
 			&i.ClosedAt,
+			&i.OpenedByTask,
 		); err != nil {
 			return nil, err
 		}
@@ -232,7 +239,7 @@ func (q *Queries) ListOpenIssueRuntimeSessions(ctx context.Context, issueID pgty
 }
 
 const listOpenIssueRuntimeSessionsByDaemon = `-- name: ListOpenIssueRuntimeSessionsByDaemon :many
-SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at FROM issue_runtime_session
+SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task FROM issue_runtime_session
 WHERE daemon_id = $1 AND status = 'open'
 `
 
@@ -259,6 +266,47 @@ func (q *Queries) ListOpenIssueRuntimeSessionsByDaemon(ctx context.Context, daem
 			&i.CreatedAt,
 			&i.LastActiveAt,
 			&i.ClosedAt,
+			&i.OpenedByTask,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenIssueRuntimeSessionsByTask = `-- name: ListOpenIssueRuntimeSessionsByTask :many
+SELECT id, workspace_id, issue_id, kind, daemon_id, runtime_id, opened_by, status, cwd, url, created_at, last_active_at, closed_at, opened_by_task FROM issue_runtime_session
+WHERE opened_by_task = $1 AND status = 'open'
+`
+
+func (q *Queries) ListOpenIssueRuntimeSessionsByTask(ctx context.Context, openedByTask pgtype.UUID) ([]IssueRuntimeSession, error) {
+	rows, err := q.db.Query(ctx, listOpenIssueRuntimeSessionsByTask, openedByTask)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []IssueRuntimeSession{}
+	for rows.Next() {
+		var i IssueRuntimeSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.IssueID,
+			&i.Kind,
+			&i.DaemonID,
+			&i.RuntimeID,
+			&i.OpenedBy,
+			&i.Status,
+			&i.Cwd,
+			&i.Url,
+			&i.CreatedAt,
+			&i.LastActiveAt,
+			&i.ClosedAt,
+			&i.OpenedByTask,
 		); err != nil {
 			return nil, err
 		}

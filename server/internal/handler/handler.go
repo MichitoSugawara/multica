@@ -414,6 +414,12 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 	}
 	h.WebhookDeliveryWorker = NewWebhookDeliveryWorker(h)
 
+	// Cancelled runs must release the shared issue panes they opened. The
+	// service owns the cancel transaction but not the session hub, so it calls
+	// back into the handler. Wired after construction because the handler needs
+	// taskSvc first.
+	taskSvc.SessionCloser = h
+
 	if daemonHub != nil {
 		daemonHub.SetSessionFrameHandler(h.HandleDaemonSessionFrame)
 	}

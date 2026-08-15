@@ -732,6 +732,7 @@ type IssueRuntimeSession struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	LastActiveAt pgtype.Timestamptz `json:"last_active_at"`
 	ClosedAt     pgtype.Timestamptz `json:"closed_at"`
+	OpenedByTask pgtype.UUID        `json:"opened_by_task"`
 }
 
 type IssueSubscriber struct {

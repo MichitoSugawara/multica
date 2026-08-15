@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
@@ -174,6 +176,126 @@ func TestIssueRuntimeSessionHubReplaysReadyToLateViewer(t *testing.T) {
 	}
 	if buffered.Type != protocol.EventSessionReady {
 		t.Fatalf("type = %s, want %s", buffered.Type, protocol.EventSessionReady)
+	}
+}
+
+// TestResolveIssueSessionTokenTaskToken covers the "mat_" branch: a
+// task-scoped agent token minted at claim time must resolve to the owning
+// human's user id on the shared-pane viewer socket — this is what the
+// session MCP tools (terminal_send / terminal_read / browser_*) dial with
+// from inside an agent task.
+func TestResolveIssueSessionTokenTaskToken(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "Session token runtime")
+	agentID, issueID := createClaimReclaimAgentAndIssue(t, ctx, runtimeID, "Session token agent")
+	taskID := createDispatchedClaimFixtureTask(t, ctx, agentID, runtimeID, issueID, "1 minute", true)
+
+	token := "mat_" + uuid.NewString()
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO task_token (token_hash, task_id, agent_id, workspace_id, user_id, expires_at)
+		VALUES ($1, $2, $3, $4, $5, now() + interval '1 hour')
+	`, auth.HashToken(token), taskID, agentID, testWorkspaceID, testUserID); err != nil {
+		t.Fatalf("insert task token: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM task_token WHERE task_id = $1`, taskID)
+	})
+
+	uid, errMsg := testHandler.resolveIssueSessionToken(ctx, token)
+	if errMsg != "" {
+		t.Fatalf("resolve mat_ token: %s", errMsg)
+	}
+	if uid != testUserID {
+		t.Fatalf("uid = %s, want %s", uid, testUserID)
+	}
+
+	// An expired token must be rejected — same query contract as REST auth.
+	expired := "mat_" + uuid.NewString()
+	if _, err := testPool.Exec(ctx, `
+		INSERT INTO task_token (token_hash, task_id, agent_id, workspace_id, user_id, expires_at)
+		VALUES ($1, $2, $3, $4, $5, now() - interval '1 minute')
+	`, auth.HashToken(expired), taskID, agentID, testWorkspaceID, testUserID); err != nil {
+		t.Fatalf("insert expired task token: %v", err)
+	}
+	if uid, errMsg := testHandler.resolveIssueSessionToken(ctx, expired); errMsg == "" {
+		t.Fatalf("expired mat_ token resolved to %s, want rejection", uid)
+	}
+
+	// A random unknown token must be rejected.
+	if uid, errMsg := testHandler.resolveIssueSessionToken(ctx, "mat_"+uuid.NewString()); errMsg == "" {
+		t.Fatalf("unknown mat_ token resolved to %s, want rejection", uid)
+	}
+}
+
+// TestCloseIssueRuntimeSessionsForTask covers the pane-leak fix: shared panes
+// opened BY an agent run must be released when that run reaches a terminal
+// state, while panes a human opened on the same issue survive untouched.
+//
+// Before this, an agent's Terminal / Browser panes stayed 'open' — holding a
+// PTY or Chrome process and consuming the per-issue and per-daemon session
+// budgets — until the 24h idle sweeper reaped them.
+func TestCloseIssueRuntimeSessionsForTask(t *testing.T) {
+	if testHandler == nil || testPool == nil {
+		t.Skip("database not available")
+	}
+	ctx := context.Background()
+	runtimeID := createClaimReclaimRuntime(t, ctx, "Session close runtime")
+	agentID, issueID := createClaimReclaimAgentAndIssue(t, ctx, runtimeID, "Session close agent")
+	taskID := createDispatchedClaimFixtureTask(t, ctx, agentID, runtimeID, issueID, "1 minute", true)
+
+	insertSession := func(kind string, openedByTask any) string {
+		t.Helper()
+		var id string
+		if err := testPool.QueryRow(ctx, `
+			INSERT INTO issue_runtime_session (
+				id, workspace_id, issue_id, kind, daemon_id, runtime_id,
+				opened_by, status, opened_by_task
+			)
+			VALUES (gen_random_uuid(), $1, $2, $3, 'daemon-close-test', $4, $5, 'open', $6)
+			RETURNING id
+		`, testWorkspaceID, issueID, kind, runtimeID, testUserID, openedByTask).Scan(&id); err != nil {
+			t.Fatalf("insert %s session: %v", kind, err)
+		}
+		return id
+	}
+
+	agentPTY := insertSession("pty", taskID)
+	agentBrowser := insertSession("browser", taskID)
+	// Opened from the UI by a human: no owning task, so it must survive.
+	humanPTY := insertSession("pty", nil)
+	t.Cleanup(func() {
+		_, _ = testPool.Exec(ctx, `DELETE FROM issue_runtime_session WHERE issue_id = $1`, issueID)
+	})
+
+	testHandler.CloseIssueRuntimeSessionsForTask(ctx, parseUUID(taskID))
+
+	statusOf := func(id string) string {
+		t.Helper()
+		var status string
+		if err := testPool.QueryRow(ctx, `SELECT status FROM issue_runtime_session WHERE id = $1`, id).Scan(&status); err != nil {
+			t.Fatalf("read session %s: %v", id, err)
+		}
+		return status
+	}
+
+	if got := statusOf(agentPTY); got != "closed" {
+		t.Fatalf("agent pty session status = %q, want closed", got)
+	}
+	if got := statusOf(agentBrowser); got != "closed" {
+		t.Fatalf("agent browser session status = %q, want closed", got)
+	}
+	if got := statusOf(humanPTY); got != "open" {
+		t.Fatalf("human-opened session status = %q, want open (must not be reaped by task cleanup)", got)
+	}
+
+	// Idempotent: a second terminal callback (complete then fail retry, or a
+	// daemon replay) must not error or resurrect anything.
+	testHandler.CloseIssueRuntimeSessionsForTask(ctx, parseUUID(taskID))
+	if got := statusOf(humanPTY); got != "open" {
+		t.Fatalf("human-opened session status after replay = %q, want open", got)
 	}
 }
 

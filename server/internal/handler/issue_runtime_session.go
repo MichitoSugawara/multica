@@ -14,6 +14,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/auth"
 	"github.com/multica-ai/multica/server/internal/realtime"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -334,7 +335,9 @@ func (h *Handler) handleIssueSessionClientFrame(ctx context.Context, conn *webso
 		}
 		req.SessionID = "" // server-assigned; ignore client ids (hijack prevention)
 		req.Cwd = ""       // server-assigned from the issue task hint
-		row, code, errMsg := h.createIssueRuntimeSession(ctx, userID, issue, req)
+		// Viewer sockets are the human UI; there is no owning agent run to
+		// bind the pane to, so it lives until an explicit close or idle TTL.
+		row, code, errMsg := h.createIssueRuntimeSession(ctx, userID, issue, req, pgtype.UUID{})
 		if code != "" {
 			h.writeSessionError(conn, "", code, errMsg)
 			return
@@ -493,6 +496,22 @@ func (h *Handler) resolveIssueSessionToken(ctx context.Context, tokenStr string)
 			return "", `{"error":"invalid token"}`
 		}
 		return uid, ""
+	}
+	// Task-scoped agent token: "mat_" prefix, minted at task claim and
+	// injected into the agent process as MULTICA_TOKEN. Resolves to the
+	// OWNING human's user id — same contract as the REST auth middleware —
+	// so the standard workspace-membership check downstream still applies.
+	// This is what lets `multica issue terminal/browser ...` (and the session
+	// MCP tools) attach to the shared panes from inside an agent task.
+	if strings.HasPrefix(tokenStr, "mat_") {
+		if h.Queries == nil {
+			return "", `{"error":"invalid token"}`
+		}
+		tt, err := h.Queries.GetTaskTokenByHash(ctx, auth.HashToken(tokenStr))
+		if err != nil {
+			return "", `{"error":"invalid token"}`
+		}
+		return uuidToString(tt.UserID), ""
 	}
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

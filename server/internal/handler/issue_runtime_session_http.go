@@ -104,12 +104,16 @@ func (h *Handler) CreateIssueRuntimeSessionHTTP(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	// Bind the pane to the agent run that opened it, when there is one, so it
+	// can be closed the moment that run reaches a terminal state instead of
+	// lingering until the 24h idle TTL. Human-opened panes carry no task and
+	// stay open deliberately.
 	row, code, msg := h.createIssueRuntimeSession(r.Context(), userID, issue, protocol.SessionOpenPayload{
 		Kind:      req.Kind,
 		DaemonID:  req.DaemonID,
 		RuntimeID: req.RuntimeID,
 		// cwd and session_id from the client are ignored
-	})
+	}, h.sessionOpenerTaskID(r, issue))
 	if code != "" {
 		status := http.StatusBadRequest
 		switch code {
@@ -149,7 +153,19 @@ func (h *Handler) CloseIssueRuntimeSessionHTTP(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, issueRuntimeSessionToResponse(row))
 }
 
-func (h *Handler) createIssueRuntimeSession(ctx context.Context, userID string, issue db.Issue, req protocol.SessionOpenPayload) (db.IssueRuntimeSession, string, string) {
+// sessionOpenerTaskID returns the agent task that is opening this pane, when
+// the caller is an agent running on THIS issue. Humans (and agents working a
+// different issue) yield an invalid UUID, which stores NULL — those panes are
+// never auto-closed by the task lifecycle.
+func (h *Handler) sessionOpenerTaskID(r *http.Request, issue db.Issue) pgtype.UUID {
+	task, ok := h.taskFromRequestHeader(r)
+	if !ok || !task.IssueID.Valid || uuidToString(task.IssueID) != uuidToString(issue.ID) {
+		return pgtype.UUID{}
+	}
+	return task.ID
+}
+
+func (h *Handler) createIssueRuntimeSession(ctx context.Context, userID string, issue db.Issue, req protocol.SessionOpenPayload, openedByTask pgtype.UUID) (db.IssueRuntimeSession, string, string) {
 	kind := req.Kind
 	if kind != protocol.SessionKindPTY && kind != protocol.SessionKindBrowser {
 		return db.IssueRuntimeSession{}, protocol.SessionErrorOpenFailed, "unknown session kind"
@@ -209,15 +225,16 @@ func (h *Handler) createIssueRuntimeSession(ctx context.Context, userID string, 
 	}
 	sessionID := parseUUID(uuid.NewString())
 	row, err := h.Queries.CreateIssueRuntimeSession(ctx, db.CreateIssueRuntimeSessionParams{
-		ID:          sessionID,
-		WorkspaceID: issue.WorkspaceID,
-		IssueID:     issue.ID,
-		Kind:        kind,
-		DaemonID:    daemonID,
-		RuntimeID:   runtime.ID,
-		OpenedBy:    openedBy,
-		Cwd:         pgtype.Text{String: cwd, Valid: cwd != ""},
-		Url:         pgtype.Text{},
+		ID:           sessionID,
+		WorkspaceID:  issue.WorkspaceID,
+		IssueID:      issue.ID,
+		Kind:         kind,
+		DaemonID:     daemonID,
+		RuntimeID:    runtime.ID,
+		OpenedBy:     openedBy,
+		Cwd:          pgtype.Text{String: cwd, Valid: cwd != ""},
+		Url:          pgtype.Text{},
+		OpenedByTask: openedByTask,
 	})
 	if err != nil {
 		slog.Error("create issue runtime session", "error", err)
@@ -444,6 +461,37 @@ func (h *Handler) reconcileDaemonSessions(daemonID string, liveIDs []string) {
 			continue
 		}
 		h.closeSessionFromDaemon(id, "daemon_missing")
+	}
+}
+
+// CloseIssueRuntimeSessionsForTask ends every shared pane an agent run opened,
+// once that run reaches a terminal state (done / failed / cancelled). Without
+// this, an agent's Terminal and Browser panes stay open — holding a live PTY or
+// Chrome process on the machine and burning the per-issue / per-daemon session
+// budget — until the 24h idle sweeper eventually reaps them.
+//
+// Human-opened panes are never touched: they store a NULL opened_by_task, so
+// the lookup below cannot match them.
+//
+// Best-effort by design. A failure here must never fail the terminal task
+// transition itself; the idle TTL sweeper remains the durable backstop.
+func (h *Handler) CloseIssueRuntimeSessionsForTask(ctx context.Context, taskID pgtype.UUID) {
+	if !taskID.Valid {
+		return
+	}
+	rows, err := h.Queries.ListOpenIssueRuntimeSessionsByTask(ctx, taskID)
+	if err != nil {
+		slog.Warn("list open sessions for finished task",
+			"task_id", uuidToString(taskID), "error", err)
+		return
+	}
+	for _, row := range rows {
+		sessionID := uuidToString(row.ID)
+		h.closeSessionFromDaemon(sessionID, "task_finished")
+		h.forwardToOneRuntime(uuidToString(row.RuntimeID), protocol.EventDaemonSessionClose, protocol.SessionClosePayload{
+			SessionID: sessionID,
+			Reason:    "task_finished",
+		})
 	}
 }
 

@@ -3363,6 +3363,13 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("complete task: failed to revoke task tokens", "task_id", uuidToString(task.ID), "error", err)
 	}
 
+	// Release the shared Terminal / Browser panes this run opened. They hold a
+	// live PTY or Chrome process on the machine and count against the per-issue
+	// and per-daemon session budgets, so leaving them to the 24h idle sweeper
+	// strands resources long after the agent is gone. Human-opened panes on the
+	// issue are unaffected.
+	h.CloseIssueRuntimeSessionsForTask(r.Context(), task.ID)
+
 	slog.Info("task completed", "task_id", taskID, "agent_id", uuidToString(task.AgentID))
 	writeJSON(w, http.StatusOK, taskToResponse(*task, workspaceID))
 }
@@ -4021,6 +4028,11 @@ func (h *Handler) failTask(w http.ResponseWriter, r *http.Request, taskID, works
 	if err := h.Queries.DeleteTaskTokensByTask(r.Context(), task.ID); err != nil {
 		slog.Warn("fail task: failed to revoke task tokens", "task_id", uuidToString(task.ID), "error", err)
 	}
+
+	// Same rationale as CompleteTask: a failed run's panes are just as stranded
+	// as a successful one's, and a crashing agent is the case most likely to
+	// leave them behind.
+	h.CloseIssueRuntimeSessionsForTask(r.Context(), task.ID)
 
 	slog.Info("task failed", "task_id", taskID, "agent_id", uuidToString(task.AgentID), "task_error", req.Error, "failure_reason", req.FailureReason)
 	writeJSON(w, http.StatusOK, taskToResponse(*task, workspaceID))
