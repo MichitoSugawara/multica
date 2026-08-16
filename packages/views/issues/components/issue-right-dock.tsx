@@ -68,6 +68,7 @@ export function IssueRightDock({
   properties,
   enableTools,
   variant = "right",
+  showAllSessions = false,
 }: {
   issue: Issue;
   properties?: ReactNode;
@@ -75,6 +76,8 @@ export function IssueRightDock({
   /** "right" is the full dock (properties + terminal + browser). "bottom"
    *  mirrors the Codex app's bottom panel: terminals only, no properties. */
   variant?: "right" | "bottom";
+  /** On mobile, show all sessions regardless of bottomIds filter. */
+  showAllSessions?: boolean;
 }) {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
@@ -101,10 +104,11 @@ export function IssueRightDock({
   // Sessions are shared per-issue on the server; which dock (right / bottom)
   // hosts a tab is a client-side preference kept in the dock store. Each
   // session renders in exactly one dock so its WS attaches only once.
+  // On mobile, show all sessions since there's no right dock.
   const bottomIds = useIssueDockStore((s) => s.bottomSessionIds(issue.id));
   const dockSessions = useMemo(
-    () => sessions.filter((session) => bottomIds.includes(session.id) === isBottom),
-    [sessions, bottomIds, isBottom],
+    () => showAllSessions ? sessions : sessions.filter((session) => bottomIds.includes(session.id) === isBottom),
+    [sessions, bottomIds, isBottom, showAllSessions],
   );
   // Tab order is a client-side preference: reconcile the persisted-ish local
   // order with whatever sessions the server currently reports (new sessions
