@@ -2406,7 +2406,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   );
 
   const sidebarContent = (
-    <IssueRightDock issue={issue} enableTools={enableTools} properties={propertiesContent} />
+    <IssueRightDock issue={issue} enableTools={enableTools && !isMobile} properties={propertiesContent} />
   );
 
   // Shared row renderer for both timeline render modes (flat / virtualized).
@@ -3170,7 +3170,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           </Sheet>
         </div>
         {enableTools && bottomDockOpen && (
-          <div className="h-72 shrink-0 border-t">
+          <div className="shrink-0 border-t" style={{ height: "45vh", minHeight: "320px" }}>
             <IssueRightDock issue={issue} enableTools variant="bottom" showAllSessions />
           </div>
         )}
