@@ -99,17 +99,16 @@ export function IssueRightDock({
     [runtimes, currentUserId],
   );
 
-  const sessions = sessionList?.sessions ?? [];
   const isBottom = variant === "bottom";
   // Sessions are shared per-issue on the server; which dock (right / bottom)
   // hosts a tab is a client-side preference kept in the dock store. Each
   // session renders in exactly one dock so its WS attaches only once.
   // On mobile, show all sessions since there's no right dock.
   const bottomIds = useIssueDockStore((s) => s.bottomSessionIds(issue.id));
-  const dockSessions = useMemo(
-    () => showAllSessions ? sessions : sessions.filter((session) => bottomIds.includes(session.id) === isBottom),
-    [sessions, bottomIds, isBottom, showAllSessions],
-  );
+  const dockSessions = useMemo(() => {
+    const sessions = sessionList?.sessions ?? [];
+    return showAllSessions ? sessions : sessions.filter((session) => bottomIds.includes(session.id) === isBottom);
+  }, [sessionList?.sessions, bottomIds, isBottom, showAllSessions]);
   // Tab order is a client-side preference: reconcile the persisted-ish local
   // order with whatever sessions the server currently reports (new sessions
   // append, closed sessions drop out).

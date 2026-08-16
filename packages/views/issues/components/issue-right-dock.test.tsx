@@ -172,4 +172,36 @@ describe("IssueRightDock shared sessions", () => {
     fireEvent.click(screen.getByRole("button", { name: "End session" }));
     expect(closeMutate).toHaveBeenCalledWith("sess-1", expect.any(Object));
   });
+
+  it("shows all sessions when showAllSessions is true", () => {
+    // Create a session that is not marked as bottom (right-pane session)
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const runtimeList = [makeRuntime({ id: "rt-mac", daemon_id: "daemon-1", name: "Claude (MacBook)" })];
+    const sessionList = [
+      makeSession({ id: "sess-1", kind: "pty", daemon_id: "daemon-1" }),
+      makeSession({ id: "sess-2", kind: "pty", daemon_id: "daemon-1" }),
+    ];
+    client.setQueryData(runtimeKeys.list("ws-1"), runtimeList);
+    client.setQueryData(issueKeys.runtimeSessions("ws-1", "issue-1"), { sessions: sessionList });
+
+    // Render bottom dock with showAllSessions=true (mobile scenario)
+    render(
+      <QueryClientProvider client={client}>
+        <I18nProvider locale="en" resources={TEST_RESOURCES}>
+          <IssueRightDock
+            issue={issue}
+            enableTools
+            variant="bottom"
+            showAllSessions
+          />
+        </I18nProvider>
+      </QueryClientProvider>,
+    );
+
+    // Both sessions should be visible even though neither is in bottomIds
+    expect(screen.getByText("Terminal 1")).toBeInTheDocument();
+    expect(screen.getByText("Terminal 2")).toBeInTheDocument();
+  });
 });
