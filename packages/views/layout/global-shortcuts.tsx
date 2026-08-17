@@ -63,7 +63,7 @@ export function GlobalShortcuts() {
       goIssues: workspacePaths.issues(),
       goProjects: workspacePaths.projects(),
       goAutopilots: workspacePaths.autopilots(),
-      goAgents: workspacePaths.agents(),
+      goAgents: chatPath,
       goSquads: workspacePaths.squads(),
       goUsage: workspacePaths.usage(),
       goRuntimes: workspacePaths.runtimes(),

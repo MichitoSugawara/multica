@@ -1,6 +1,6 @@
 "use client";
 
-import { useChatStore } from "@multica/core/chat";
+import { CHAT_WORKSPACE_MOCK, useChatStore } from "@multica/core/chat";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useNavigation } from "../navigation";
 import { ChatFab } from "./components/chat-fab";
@@ -23,6 +23,7 @@ export function FloatingChat() {
   const { pathname } = useNavigation();
   const wsPaths = useWorkspacePaths();
 
+  if (CHAT_WORKSPACE_MOCK) return null;
   if (!enabled) return null;
   // Suppress on the Chat tab — it renders the same conversation full-page.
   if (isFloatingChatRouteSuppressed(pathname, wsPaths.chat())) return null;
