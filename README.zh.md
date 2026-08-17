@@ -213,7 +213,7 @@ Multica 不自带模型。它驱动的是你本来就装好、登录好的那些
 
 想参与贡献，先看[贡献指南](CONTRIBUTING.md)。
 
-**环境要求：**[Node.js](https://nodejs.org/) v20+、[pnpm](https://pnpm.io/) v10.28+、[Go](https://go.dev/) v1.26+、[Docker](https://www.docker.com/)
+**环境要求：**[Node.js](https://nodejs.org/) v20+、[pnpm](https://pnpm.io/) v10.28+、[Go](https://go.dev/) v1.26+，以及 [Docker](https://www.docker.com/) 或本机已在 `localhost:5432` 监听的 PostgreSQL 17
 
 ```bash
 make dev

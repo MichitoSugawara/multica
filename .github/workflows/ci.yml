@@ -299,6 +299,9 @@ jobs:
       - name: Run migrations
         run: cd server && go run ./cmd/migrate up
 
+      - name: Verify local Postgres bootstrap
+        run: bash scripts/ensure-postgres.test.sh
+
       - name: Verify Go test wrapper
         run: bash scripts/test-go.test.sh
 

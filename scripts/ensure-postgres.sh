@@ -66,8 +66,45 @@ is_local() {
   [ -z "$DATABASE_URL" ] || [ "$db_host" = "localhost" ] || [ "$db_host" = "127.0.0.1" ] || [ "$db_host" = "::1" ]
 }
 
-if is_local; then
-  # ---------- Local: use Docker ----------
+has_docker() {
+  command -v docker >/dev/null 2>&1
+}
+
+host_postgres_ready() {
+  local host=$1
+  local port=$2
+  command -v pg_isready >/dev/null 2>&1 && pg_isready -h "$host" -p "$port" >/dev/null 2>&1
+}
+
+ensure_host_database() {
+  local host=$1
+  local port=$2
+
+  echo "==> Ensuring database '$POSTGRES_DB' exists..."
+
+  if ! command -v psql >/dev/null 2>&1; then
+    if host_postgres_ready "$host" "$port"; then
+      echo "✓ PostgreSQL ready (local). Database: $POSTGRES_DB"
+      echo "  psql not found; skipped CREATE DATABASE. Create '$POSTGRES_DB' if it does not exist."
+      return
+    fi
+    echo "PostgreSQL is reachable on $host:$port, but psql is not installed."
+    echo "Install the PostgreSQL client tools, or install Docker so make can start the shared container."
+    exit 1
+  fi
+
+  db_exists="$(psql -h "$host" -p "$port" -U "$POSTGRES_USER" -d postgres -Atqc "SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_DB'")"
+
+  if [ "$db_exists" != "1" ]; then
+    psql -h "$host" -p "$port" -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
+      -c "CREATE DATABASE \"$POSTGRES_DB\"" \
+      >/dev/null
+  fi
+
+  echo "✓ PostgreSQL ready (local). Database: $POSTGRES_DB"
+}
+
+ensure_docker_database() {
   echo "==> Ensuring shared PostgreSQL container is running on localhost:5432..."
   docker compose up -d postgres
 
@@ -88,6 +125,22 @@ if is_local; then
   fi
 
   echo "✓ PostgreSQL ready (local Docker). Database: $POSTGRES_DB"
+}
+
+if is_local; then
+  local_host="${db_host:-localhost}"
+
+  if host_postgres_ready "$local_host" "$db_port"; then
+    echo "==> Local PostgreSQL already accepting connections on $local_host:$db_port."
+    ensure_host_database "$local_host" "$db_port"
+  elif has_docker; then
+    ensure_docker_database
+  else
+    echo "PostgreSQL is not running on $local_host:$db_port, and Docker is not available to start it."
+    echo "Start a local PostgreSQL 17 that accepts connections as '$POSTGRES_USER',"
+    echo "or install Docker so make can start the shared container."
+    exit 1
+  fi
 else
   # ---------- Remote: skip Docker, verify connectivity ----------
   echo "==> Remote database detected (host: $db_host). Skipping Docker."

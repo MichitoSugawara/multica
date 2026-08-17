@@ -205,9 +205,15 @@ db-reset: ## Drop and recreate the current env's database, then re-run all migra
 	esac
 	@bash scripts/ensure-postgres.sh "$(ENV_FILE)"
 	@echo "==> Dropping and recreating database '$(POSTGRES_DB)'..."
-	@$(COMPOSE) exec -T postgres psql -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 \
-		-c "DROP DATABASE IF EXISTS \"$(POSTGRES_DB)\" WITH (FORCE);" \
-		-c "CREATE DATABASE \"$(POSTGRES_DB)\";"
+	@if command -v docker >/dev/null 2>&1 && $(COMPOSE) ps -q postgres 2>/dev/null | grep -q .; then \
+		$(COMPOSE) exec -T postgres psql -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 \
+			-c "DROP DATABASE IF EXISTS \"$(POSTGRES_DB)\" WITH (FORCE);" \
+			-c "CREATE DATABASE \"$(POSTGRES_DB)\""; \
+	else \
+		PGPASSWORD=$(POSTGRES_PASSWORD) psql -h localhost -p $(POSTGRES_PORT) -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 \
+			-c "DROP DATABASE IF EXISTS \"$(POSTGRES_DB)\" WITH (FORCE);" \
+			-c "CREATE DATABASE \"$(POSTGRES_DB)\""; \
+	fi
 	@echo "==> Running migrations..."
 	cd server && go run ./cmd/migrate up
 	@echo ""

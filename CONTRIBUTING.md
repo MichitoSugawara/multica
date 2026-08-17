@@ -44,7 +44,7 @@ This keeps Docker simple while still isolating schema and data.
 - Node.js `v20+`
 - `pnpm` `v10.28+`
 - Go `v1.26+`
-- Docker
+- Docker, **or** a local PostgreSQL 17 already accepting connections on `localhost:5432`
 
 ## Important Rules
 
@@ -122,9 +122,9 @@ This single command:
 
 - auto-detects whether you're in a main checkout or a worktree
 - creates the appropriate env file (`.env` or `.env.worktree`) if it doesn't exist
-- checks that prerequisites (Node.js, pnpm, Go, Docker) are installed
+- checks that prerequisites (Node.js, pnpm, Go) are installed
 - installs JavaScript dependencies
-- ensures the shared PostgreSQL container is running
+- uses an already-running local PostgreSQL if one is listening, otherwise starts the shared Docker container
 - creates the application database if it does not exist
 - runs all migrations
 - starts both backend and frontend
@@ -284,7 +284,7 @@ The following commands all ensure the target database exists before they continu
 - `make migrate-down`
 - `make check`
 
-That logic lives in `scripts/ensure-postgres.sh`.
+That logic lives in `scripts/ensure-postgres.sh`. For a local `DATABASE_URL` it prefers an already-running PostgreSQL on `localhost` and only starts the shared Docker container when nothing is listening.
 
 ## Testing
 
