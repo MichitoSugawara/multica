@@ -14,6 +14,10 @@ import {
 } from "@/features/auth/auth-cookie";
 import { detectWebOS } from "@/platform/client-os";
 
+// Direct member access so Next inlines this into the client bundle.
+// Do not read it through a helper that takes `process.env` as an object.
+const WEB_MOCK = process.env.NEXT_PUBLIC_MOCK === "1";
+
 // Legacy token in localStorage → keep this session in token mode so users who
 // logged in before the cookie-auth migration stay authed. They migrate to
 // cookie mode on their next logout/login cycle (logout clears multica_token).
@@ -50,12 +54,14 @@ export function WebProviders({
   resources,
   apiBaseUrl,
   wsUrl,
+  mock = WEB_MOCK,
 }: {
   children: React.ReactNode;
   locale: SupportedLocale;
   resources: Record<string, LocaleResources>;
   apiBaseUrl?: string;
   wsUrl?: string;
+  mock?: boolean;
 }) {
   const cookieAuth = !hasLegacyToken();
   // Stable identity reference so downstream effects keyed on it don't see a
@@ -68,8 +74,9 @@ export function WebProviders({
   return (
     <CoreProvider
       apiBaseUrl={apiBaseUrl}
-      wsUrl={wsUrl || deriveWsUrl()}
+      wsUrl={mock ? "" : wsUrl || deriveWsUrl()}
       cookieAuth={cookieAuth}
+      mock={mock}
       onLogin={setLoggedInCookie}
       onLogout={() => {
         // welcome-store holds the transient post-onboarding signal. Must

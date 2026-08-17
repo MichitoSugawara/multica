@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isWebMockMode,
   resolveBrowserApiBaseUrl,
   resolveBrowserWsUrl,
   resolveDevDocsUrl,
@@ -9,6 +10,19 @@ import {
   resolveRemoteApiUrl,
   runtimeRewriteDestination,
 } from "./runtime-urls";
+
+describe("isWebMockMode", () => {
+  it("is on only when NEXT_PUBLIC_MOCK is 1", () => {
+    expect(isWebMockMode({ NEXT_PUBLIC_MOCK: "1" })).toBe(true);
+    expect(isWebMockMode({ NEXT_PUBLIC_MOCK: "true" })).toBe(false);
+    expect(isWebMockMode({})).toBe(false);
+  });
+
+  it("reads the env object it is given, not an implicit client global", () => {
+    expect(isWebMockMode({ NEXT_PUBLIC_MOCK: "1" })).toBe(true);
+    expect(isWebMockMode({ NEXT_PUBLIC_MOCK: undefined })).toBe(false);
+  });
+});
 
 describe("resolveRemoteApiUrl", () => {
   it("prefers REMOTE_API_URL when explicitly configured", () => {

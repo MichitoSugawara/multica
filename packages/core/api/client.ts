@@ -391,11 +391,21 @@ export interface ApiClientIdentity {
   os?: string;
 }
 
+export type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export interface ApiClientOptions {
   logger?: Logger;
   onUnauthorized?: () => void;
   /** Identifies the client to the server. Sent as X-Client-* headers. */
   identity?: ApiClientIdentity;
+  /**
+   * Override the network fetch. UI mock mode injects an in-memory adapter
+   * so the existing client never needs a Go API.
+   */
+  fetch?: FetchLike;
 }
 
 export interface ClientRuntimeSnapshot {
@@ -616,7 +626,8 @@ export class ApiClient {
 
     this.logger.info(`→ ${method} ${path}`, { rid });
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
+    const doFetch = this.options.fetch ?? globalThis.fetch;
+    const res = await doFetch(`${this.baseUrl}${path}`, {
       ...init,
       headers,
       credentials: "include",

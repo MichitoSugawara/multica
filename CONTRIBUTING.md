@@ -129,6 +129,18 @@ This single command:
 - runs all migrations
 - starts both backend and frontend
 
+### Frontend mock (UI only)
+
+To run the current web dashboard without a Go API, database, tunnel, or real login:
+
+```bash
+pnpm mock
+```
+
+This sets `NEXT_PUBLIC_MOCK=1` and starts Next. You land on `/dione/issues` as
+`michitogawara@gmail.com` in workspace ディオネ. Mutations stay in memory.
+`pnpm dev` / `pnpm build` are unchanged when the flag is off.
+
 ### Explicit Setup (advanced)
 
 If you prefer separate control over setup and startup:
