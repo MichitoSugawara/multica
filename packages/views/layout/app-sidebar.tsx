@@ -152,7 +152,6 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "issues", labelKey: "issues" },
   { key: "projects", labelKey: "projects" },
   { key: "autopilots", labelKey: "autopilots" },
-  { key: "agents", labelKey: "agents" },
   { key: "squads", labelKey: "squads" },
   { key: "usage", labelKey: "usage" },
 ];

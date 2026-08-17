@@ -2088,10 +2088,6 @@ export function IssueDisplayControls({
                   setViewMenuOpen(false);
                 }}
               >
-                <DropdownMenuRadioItem value="board">
-                  <Columns3 />
-                  {t(($) => $.view.board)}
-                </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="list">
                   <List />
                   {t(($) => $.view.list)}

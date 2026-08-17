@@ -546,7 +546,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 
           <IssueSurface
             scope={issueScope}
-            modes={["board", "list", "table", "swimlane", "gantt"]}
+            modes={["list", "table", "swimlane", "gantt"]}
           />
           </div>
         </ResizablePanel>

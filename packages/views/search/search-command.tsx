@@ -247,7 +247,6 @@ export function SearchCommand() {
     { key: "myIssues", label: t(($) => $.pages.my_issues), keywords: ["my", "issues", "assigned", "我的"] },
     { key: "issues", label: t(($) => $.pages.issues), keywords: ["issues", "tasks", "bugs"] },
     { key: "projects", label: t(($) => $.pages.projects), keywords: ["projects", "kanban", "项目"] },
-    { key: "agents", label: t(($) => $.pages.agents), keywords: ["agents", "bots", "ai"] },
     { key: "runtimes", label: t(($) => $.pages.runtimes), keywords: ["runtimes", "environments"] },
     { key: "skills", label: t(($) => $.pages.skills), keywords: ["skills", "library"] },
     { key: "settings", label: t(($) => $.pages.settings), keywords: ["settings", "config", "preferences", "设置"] },

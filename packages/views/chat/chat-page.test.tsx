@@ -171,7 +171,7 @@ vi.mock("./components/use-chat-controller", async () => {
   };
 });
 
-import { ChatPage } from "./chat-page";
+import { AgentChatPage as ChatPage } from "./agent-chat-page";
 
 const agent: Agent = {
   id: "agent-1",

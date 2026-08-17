@@ -2,6 +2,35 @@ export { createChatStore, CHAT_MIN_W, CHAT_MIN_H, CHAT_DEFAULT_W, CHAT_DEFAULT_H
 export type { ChatStoreOptions, ChatState, ChatTimelineItem } from "./store";
 export { useRecentContextStore, selectRecentContexts } from "./recent-context-store";
 export type { RecentContextEntry, RecentContextType } from "./recent-context-store";
+export {
+  CHAT_WORKSPACE_MOCK,
+  WORKSPACE_REPLY_DELAY_MS,
+  MOCK_MACHINES,
+  MOCK_MODELS,
+  MOCK_CONNECTORS,
+  MOCK_FILES,
+  MOCK_GIT_BRANCH,
+  MOCK_GIT_FILES,
+  MOCK_GIT_DIFF,
+  WORKSPACE_SLASH_COMMANDS,
+  useChatWorkspaceStore,
+  resetChatWorkspaceStore,
+  machineLabel,
+  modelLabel,
+  fileByPath,
+} from "./workspace-mock";
+export type {
+  WorkspaceMachine,
+  WorkspaceMachineKind,
+  WorkspaceModel,
+  WorkspaceMessage,
+  WorkspaceSession,
+  WorkspaceRightPane,
+  WorkspaceConnectorId,
+  WorkspaceSlashId,
+  WorkspaceSlashCommand,
+  WorkspaceTerminal,
+} from "./workspace-mock";
 
 import type { createChatStore as CreateChatStoreFn } from "./store";
 

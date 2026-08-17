@@ -44,11 +44,9 @@ import {
   viewStoreSlice,
   viewStorePersistOptions,
   mergeViewStatePersisted,
-  GROUPING_OPTIONS,
   SORT_OPTIONS,
   SWIMLANE_GROUPINGS,
   CARD_PROPERTY_OPTIONS,
-  type IssueGrouping,
   type IssueViewState,
   type SortField,
   type SwimlaneGrouping,
@@ -105,11 +103,6 @@ const LAYOUT_LABEL_KEY = {
   gantt: "gantt",
 } as const;
 
-const GROUPING_LABEL_KEY = {
-  status: "group_status",
-  assignee: "group_assignee",
-} as const;
-
 const SWIMLANE_LABEL_KEY = {
   parent: "group_parent",
   project: "group_project",
@@ -151,7 +144,6 @@ export function DraftDefinitionFields() {
   const { t } = useT("issues");
   const wsId = useWorkspaceId();
   const viewMode = useViewStore((s) => s.viewMode);
-  const grouping = useViewStore((s) => s.grouping);
   const swimlaneGrouping = useViewStore((s) => s.swimlaneGrouping);
   const sortBy = useViewStore((s) => s.sortBy);
   const sortDirection = useViewStore((s) => s.sortDirection);
@@ -160,10 +152,6 @@ export function DraftDefinitionFields() {
   const act = useViewStoreApi().getState();
 
   const { data: workspaceProperties = [] } = useQuery(propertyListOptions(wsId));
-  const groupableProperties = useMemo(
-    () => workspaceProperties.filter((p) => p.type === "select"),
-    [workspaceProperties],
-  );
   const sortableProperties = useMemo(
     () => workspaceProperties.filter((p) => p.type === "number" || p.type === "date"),
     [workspaceProperties],
@@ -172,15 +160,12 @@ export function DraftDefinitionFields() {
     workspaceProperties.find((p) => `property:${p.id}` === key)?.name ??
     t(($) => $.save_view.custom_property);
 
-  const layoutLabel = t(($) => $.view[LAYOUT_LABEL_KEY[viewMode]]);
+  const layoutMode = viewMode === "board" ? "list" : viewMode;
+  const layoutLabel = t(($) => $.view[LAYOUT_LABEL_KEY[layoutMode]]);
   const groupingLabel =
-    viewMode === "board"
-      ? grouping in GROUPING_LABEL_KEY
-        ? t(($) => $.display[GROUPING_LABEL_KEY[grouping as keyof typeof GROUPING_LABEL_KEY]])
-        : propertyName(grouping)
-      : viewMode === "swimlane"
-        ? t(($) => $.display[SWIMLANE_LABEL_KEY[swimlaneGrouping]])
-        : null;
+    layoutMode === "swimlane"
+      ? t(($) => $.display[SWIMLANE_LABEL_KEY[swimlaneGrouping]])
+      : null;
   const sortLabel =
     sortBy in SORT_LABEL_KEY
       ? t(($) => $.display[SORT_LABEL_KEY[sortBy as keyof typeof SORT_LABEL_KEY]])
@@ -243,11 +228,11 @@ export function DraftDefinitionFields() {
             <div className="flex items-center gap-3">
               <Label className={ROW_LABEL}>{t(($) => $.save_view.layout_label)}</Label>
               <Select
-                items={(["list", "board", "table", "swimlane"] as const).map((mode) => ({
+                items={(["list", "table", "swimlane"] as const).map((mode) => ({
                   value: mode as string,
                   label: t(($) => $.view[LAYOUT_LABEL_KEY[mode]]),
                 }))}
-                value={viewMode}
+                value={layoutMode}
                 onValueChange={(v) => {
                   if (v) act.setViewMode(v as ViewMode);
                 }}
@@ -257,7 +242,7 @@ export function DraftDefinitionFields() {
                 </SelectTrigger>
                 <SelectContent align="start">
                   <SelectGroup>
-                    {(["list", "board", "table", "swimlane"] as const).map((mode) => (
+                    {(["list", "table", "swimlane"] as const).map((mode) => (
                       <SelectItem key={mode} value={mode}>
                         {t(($) => $.view[LAYOUT_LABEL_KEY[mode]])}
                       </SelectItem>
@@ -266,51 +251,6 @@ export function DraftDefinitionFields() {
                 </SelectContent>
               </Select>
             </div>
-            {viewMode === "board" && (
-              <div className="flex items-center gap-3">
-                <Label className={ROW_LABEL}>
-                  {t(($) => $.display.grouping_section)}
-                </Label>
-                <Select
-                  items={[
-                    ...GROUPING_OPTIONS.map((opt) => ({
-                      value: opt.value as string,
-                      label: t(($) => $.display[GROUPING_LABEL_KEY[opt.value]]),
-                    })),
-                    ...groupableProperties.map((p) => ({
-                      value: `property:${p.id}`,
-                      label: p.name,
-                    })),
-                  ]}
-                  value={grouping}
-                  onValueChange={(v) => {
-                    if (v) act.setGrouping(v as IssueGrouping);
-                  }}
-                >
-                  <SelectTrigger size="sm" className="w-64" aria-label={t(($) => $.display.grouping_section)}>
-                    <SelectValue>
-                      {grouping in GROUPING_LABEL_KEY
-                        ? t(($) => $.display[GROUPING_LABEL_KEY[grouping as keyof typeof GROUPING_LABEL_KEY]])
-                        : propertyName(grouping)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent align="start">
-                    <SelectGroup>
-                      {GROUPING_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {t(($) => $.display[GROUPING_LABEL_KEY[opt.value]])}
-                        </SelectItem>
-                      ))}
-                      {groupableProperties.map((property) => (
-                        <SelectItem key={property.id} value={`property:${property.id}`}>
-                          {property.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             {viewMode === "swimlane" && (
               <div className="flex items-center gap-3">
                 <Label className={ROW_LABEL}>

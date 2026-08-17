@@ -294,7 +294,7 @@ vi.mock("@multica/core/issues/config", () => ({
 
 // Mock view store
 const mockViewState = {
-  viewMode: "board" as "board" | "list",
+  viewMode: "list" as "board" | "list",
   grouping: "status" as "status" | "assignee",
   statusFilters: [] as string[],
   priorityFilters: [] as string[],
@@ -598,33 +598,6 @@ const mockIssues: Issue[] = [
   },
 ];
 
-function mockAssigneeGroups(issues: Issue[]) {
-  const groups = new Map<string, { assignee_type: Issue["assignee_type"]; assignee_id: string | null; issues: Issue[] }>();
-  for (const issue of issues) {
-    const id =
-      issue.assignee_type && issue.assignee_id
-        ? `assignee:${issue.assignee_type}:${issue.assignee_id}`
-        : "assignee:unassigned";
-    if (!groups.has(id)) {
-      groups.set(id, {
-        assignee_type: issue.assignee_type,
-        assignee_id: issue.assignee_id,
-        issues: [],
-      });
-    }
-    groups.get(id)!.issues.push(issue);
-  }
-  return {
-    groups: [...groups.entries()].map(([id, group]) => ({
-      id,
-      assignee_type: group.assignee_type,
-      assignee_id: group.assignee_id,
-      issues: group.issues,
-      total: group.issues.length,
-    })),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Import component under test (after mocks)
 // ---------------------------------------------------------------------------
@@ -683,7 +656,7 @@ describe("IssuesPage (shared)", () => {
     );
     mockListIssues.mockResolvedValue({ issues: [], total: 0 });
     mockListGroupedIssues.mockResolvedValue({ groups: [] });
-    mockViewState.viewMode = "board";
+    mockViewState.viewMode = "list";
     mockViewState.grouping = "status";
     mockViewState.statusFilters = [];
     mockViewState.priorityFilters = [];
@@ -712,7 +685,7 @@ describe("IssuesPage (shared)", () => {
     expect(screen.getByText("Write tests")).toBeInTheDocument();
   });
 
-  it("renders board column headers", async () => {
+  it("does not offer the archived board view", async () => {
     mockListIssues.mockImplementation((params: any) =>
       Promise.resolve({
         issues: mockIssues.filter((i) => i.status === params?.status),
@@ -722,46 +695,23 @@ describe("IssuesPage (shared)", () => {
 
     renderWithQuery(<IssuesPage />);
 
-    await screen.findByText("Backlog");
-    expect(screen.getAllByText("Todo").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("In Progress").length).toBeGreaterThanOrEqual(1);
+    await screen.findByText("Implement auth");
+    expect(screen.queryByRole("radio", { name: /board/i })).not.toBeInTheDocument();
   });
 
-  it("groups board columns by assignee", async () => {
+  it("still lists issues when grouping by assignee after board was archived", async () => {
     mockViewState.grouping = "assignee";
-    mockListGroupedIssues.mockResolvedValue(mockAssigneeGroups(mockIssues));
-
-    renderWithQuery(<IssuesPage />);
-
-    // "Test User" renders both as the assignee group header and on the
-    // assignee chip of each card grouped under that header, so a unique
-    // match is not guaranteed.
-    await screen.findAllByText("Test User");
-    expect(screen.getAllByText("Agent One").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Squad One").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("No assignee")).toBeInTheDocument();
-  });
-
-  it("uses table group/row branches instead of the legacy status sweep", async () => {
-    mockViewState.grouping = "assignee";
-    mockListGroupedIssues.mockResolvedValue(mockAssigneeGroups(mockIssues));
+    mockListIssues.mockImplementation((params: any) =>
+      Promise.resolve({
+        issues: mockIssues.filter((i) => i.status === params?.status),
+        total: mockIssues.filter((i) => i.status === params?.status).length,
+      }),
+    );
 
     renderWithQuery(<IssuesPage />);
 
     await screen.findByText("Implement auth");
-    expect(mockListIssueTableGroups).toHaveBeenCalledWith(
-      expect.objectContaining({
-        group: { kind: "assignee" },
-        page: { limit: 100, cursor: null },
-      }),
-    );
-    expect(mockListIssueTableRows).toHaveBeenCalledWith(
-      expect.objectContaining({
-        group: { kind: "assignee" },
-        page: { limit: 50, cursor: null },
-      }),
-    );
-    expect(mockListIssues).not.toHaveBeenCalled();
+    expect(mockListIssues).toHaveBeenCalled();
   });
 
   it("shows the 'Issues' section header without a workspace prefix", async () => {

@@ -367,6 +367,11 @@ describe("personal nav — Chat", () => {
     expect(chatNav(container)).not.toBeNull();
   });
 
+  it("hides the archived Agents nav item", () => {
+    const { container } = render(<AppSidebar />);
+    expect(container.querySelector('button[data-href="/acme/agents"]')).toBeNull();
+  });
+
   it("badges the Chat nav with the summed unread_count of chat sessions", () => {
     chatSessions.current = [{ id: "a", unread_count: 3 }, { id: "b", unread_count: 2 }, { id: "c", unread_count: 0 }];
     const { container } = render(<AppSidebar />);
