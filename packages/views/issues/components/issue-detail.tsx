@@ -2075,7 +2075,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     return <IssueNotFound showBackLink={!onDelete} leading={leadingAction} />;
   }
 
-  const enableTools = enableRuntimeDock && !isMobile;
+  const enableTools = enableRuntimeDock;
   const propertiesContent = (
     <div className="space-y-5">
       {/* Properties */}
@@ -2406,7 +2406,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   );
 
   const sidebarContent = (
-    <IssueRightDock issue={issue} enableTools={enableTools} properties={propertiesContent} />
+    <IssueRightDock issue={issue} enableTools={enableTools && !isMobile} properties={propertiesContent} />
   );
 
   // Shared row renderer for both timeline render modes (flat / virtualized).
@@ -3160,13 +3160,20 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   if (isMobile) {
     return (
-      <div className="flex flex-1 min-h-0">
-        {detailContent}
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent side="right" showCloseButton={false} className="w-[320px] overflow-y-auto p-4">
-            {sidebarContent}
-          </SheetContent>
-        </Sheet>
+      <div className="flex flex-1 min-h-0 flex-col">
+        <div className="flex flex-1 min-h-0">
+          {detailContent}
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent side="right" showCloseButton={false} className="w-[320px] overflow-y-auto p-4">
+              {sidebarContent}
+            </SheetContent>
+          </Sheet>
+        </div>
+        {enableTools && bottomDockOpen && (
+          <div className="shrink-0 border-t" style={{ height: "45vh", minHeight: "320px" }}>
+            <IssueRightDock issue={issue} enableTools variant="bottom" showAllSessions />
+          </div>
+        )}
       </div>
     );
   }
