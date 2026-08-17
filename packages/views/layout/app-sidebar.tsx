@@ -24,6 +24,7 @@ import { Layers,
   Check,
   SquarePen,
   X,
+  MessageSquarePlus,
 } from "lucide-react";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
@@ -162,6 +163,20 @@ const configureNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "skills", labelKey: "skills" },
   { key: "settings", labelKey: "settings" },
 ];
+
+/** Archived for the remote-agent mock — routes remain reachable by URL. */
+const ARCHIVED_NAV_KEYS = new Set<NavKey>([
+  "myIssues",
+  "issues",
+  "projects",
+  "autopilots",
+  "agents",
+  "squads",
+]);
+
+function visibleNavItems(items: { key: NavKey; labelKey: NavLabelKey }[]) {
+  return items.filter((item) => !ARCHIVED_NAV_KEYS.has(item.key));
+}
 
 function DraftDot() {
   const hasDraft = useIssueDraftStore((s) => s.hasDraft());
@@ -573,7 +588,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         ? list.find((w) => w.id === invitation.workspace_id)
         : null;
       if (joined) {
-        push(paths.workspace(joined.slug).issues());
+        push(paths.workspace(joined.slug).chat());
       }
     },
   });
@@ -645,7 +660,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                       <DropdownMenuItem
                         key={ws.id}
                         render={
-                          <AppLink href={paths.workspace(ws.slug).issues()} />
+                          <AppLink href={paths.workspace(ws.slug).chat()} />
                         }
                       >
                         <WorkspaceAvatar name={ws.name} avatarUrl={ws.avatar_url} size="sm" />
@@ -730,6 +745,15 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             <SidebarMenuItem>
               <SidebarMenuButton
                 className="text-muted-foreground"
+                render={<AppLink href={`${p.chat()}?new=1`} />}
+              >
+                <MessageSquarePlus />
+                <span>{t(($) => $.sidebar.new_chat)}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="text-muted-foreground"
                 onClick={() => openCreateIssueWithPreference()}
               >
                 <span className="relative">
@@ -750,7 +774,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {personalNav.map((item) => {
+                {visibleNavItems(personalNav).map((item) => {
                   const href = p[item.key]();
                   const Icon = routeIconForPath(href);
                   const isActive = isNavActive(pathname, href);
@@ -824,7 +848,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {workspaceNav.map((item) => {
+                {visibleNavItems(workspaceNav).map((item) => {
                   const href = p[item.key]();
                   const Icon = routeIconForPath(href);
                   const isActive = !isActivePinnedRoute && isNavActive(pathname, href);

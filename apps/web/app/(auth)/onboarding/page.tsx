@@ -82,7 +82,7 @@ export default function OnboardingPage() {
               paths.workspace(ws.slug).issueDetail(destination.issueId),
             );
           } else if (ws) {
-            router.push(paths.workspace(ws.slug).issues());
+            router.push(paths.workspace(ws.slug).chat());
           } else {
             router.push(paths.root());
           }

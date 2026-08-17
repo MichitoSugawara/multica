@@ -1,0 +1,51 @@
+{
+  "page": {
+    "title": "エージェント",
+    "chats": "チャット",
+    "new_chat": "新規チャット",
+    "no_sessions": "セッションがありません",
+    "empty_title": "リモートエージェントセッションを開始",
+    "empty_description": "マシンとモデルを選んで、Codex 風のツールペイン付きワークスペースを開きます。",
+    "hide_bottom_pane": "下ペインを隠す",
+    "show_bottom_pane": "下ペインを表示"
+  },
+  "wizard": {
+    "title": "新規チャット",
+    "step_machine": "ステップ 1 — マシン（ランタイム / ワーカー）を選択",
+    "step_model": "ステップ 2 — モデルを選択",
+    "change_machine": "← マシンを変更",
+    "start_session": "セッション開始",
+    "offline": "オフライン"
+  },
+  "connectors": {
+    "label": "コネクタ",
+    "connected_hint": "{{name}} は接続済み（モック）。クリックでコンポーザーでハイライト。",
+    "disconnected_hint": "{{name}} を接続 — このデモでは API 呼び出しなし。"
+  },
+  "header": {
+    "machine": "マシン",
+    "model": "モデル"
+  },
+  "composer": {
+    "placeholder": "エージェントにメッセージ…（/ でコマンド）",
+    "slash_aria": "スラッシュコマンド",
+    "send_aria": "送信"
+  },
+  "dock": {
+    "browser": "ブラウザ",
+    "terminal": "ターミナル",
+    "rdp": "リモートデスクトップ",
+    "files": "ファイル",
+    "git": "Git"
+  },
+  "panes": {
+    "browser_title": "Multica エージェントワークスペース",
+    "browser_description": "モックブラウザペイン — 本番では CDP スクリーンキャストがここに表示されます。",
+    "rdp_title": "リモートデスクトップ",
+    "rdp_description": "VNC/WebRTC ストリームのプレースホルダ — dale-suzukimac-mini（モック）",
+    "rdp_stats": "1920 × 1080 · 30 fps · 暗号化"
+  },
+  "sidebar": {
+    "new_chat": "新規チャット"
+  }
+}

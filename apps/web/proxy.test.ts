@@ -101,7 +101,7 @@ describe("proxy legacy workspace route redirects", () => {
 
   it("redirects app-host root URLs to the last workspace", () => {
     expect(redirectLocation("/", sessionCookies)).toBe(
-      "https://app.multica.test/acme/issues",
+      "https://app.multica.test/acme/chat",
     );
   });
 
@@ -217,7 +217,7 @@ describe("proxy root and locale handling", () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(
-      "https://app.multica.test/acme/issues",
+      "https://app.multica.test/acme/chat",
     );
   });
 

@@ -12,11 +12,11 @@ test.describe("Authentication", () => {
     await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
-  test("login and redirect to /issues", async ({ page }) => {
+  test("login and redirect to /chat", async ({ page }) => {
     const workspaceSlug = await loginAsDefault(page);
 
-    await expect(page).toHaveURL(new RegExp(`/${workspaceSlug}/issues$`));
-    await expect(page.getByRole("button", { name: "New Issue" })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/${workspaceSlug}/chat`));
+    await expect(page.getByRole("button", { name: "New Chat" })).toBeVisible();
   });
 
   test("unauthenticated user is redirected to /login", async ({ page }) => {

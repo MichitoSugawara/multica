@@ -16,6 +16,7 @@ import enWorkspace from "./en/workspace.json";
 import enProjects from "./en/projects.json";
 import enAutopilots from "./en/autopilots.json";
 import enSkills from "./en/skills.json";
+import enAgentWorkspace from "./en/agent-workspace.json";
 import enChat from "./en/chat.json";
 import enModals from "./en/modals.json";
 import enRuntimes from "./en/runtimes.json";
@@ -91,6 +92,7 @@ import jaWorkspace from "./ja/workspace.json";
 import jaProjects from "./ja/projects.json";
 import jaAutopilots from "./ja/autopilots.json";
 import jaSkills from "./ja/skills.json";
+import jaAgentWorkspace from "./ja/agent-workspace.json";
 import jaChat from "./ja/chat.json";
 import jaModals from "./ja/modals.json";
 import jaRuntimes from "./ja/runtimes.json";
@@ -123,6 +125,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: enAutopilots,
     skills: enSkills,
     chat: enChat,
+    "agent-workspace": enAgentWorkspace,
     modals: enModals,
     runtimes: enRuntimes,
     layout: enLayout,
@@ -204,6 +207,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     autopilots: jaAutopilots,
     skills: jaSkills,
     chat: jaChat,
+    "agent-workspace": jaAgentWorkspace,
     modals: jaModals,
     runtimes: jaRuntimes,
     layout: jaLayout,

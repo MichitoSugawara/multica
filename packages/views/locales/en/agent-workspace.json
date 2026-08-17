@@ -1,0 +1,51 @@
+{
+  "page": {
+    "title": "Agent",
+    "chats": "Chats",
+    "new_chat": "New Chat",
+    "no_sessions": "No sessions yet",
+    "empty_title": "Start a remote agent session",
+    "empty_description": "Pick a machine and model to open a Codex-style workspace with tool panes.",
+    "hide_bottom_pane": "Hide bottom pane",
+    "show_bottom_pane": "Show bottom pane"
+  },
+  "wizard": {
+    "title": "New Chat",
+    "step_machine": "Step 1 — Pick a machine (runtime / worker)",
+    "step_model": "Step 2 — Pick a model",
+    "change_machine": "← Change machine",
+    "start_session": "Start session",
+    "offline": "Offline"
+  },
+  "connectors": {
+    "label": "Connectors",
+    "connected_hint": "{{name}} is connected (mock). Click to highlight in the composer.",
+    "disconnected_hint": "Connect {{name}} — no API call in this demo."
+  },
+  "header": {
+    "machine": "Machine",
+    "model": "Model"
+  },
+  "composer": {
+    "placeholder": "Message the agent… (/ for commands)",
+    "slash_aria": "Slash commands",
+    "send_aria": "Send"
+  },
+  "dock": {
+    "browser": "Browser",
+    "terminal": "Terminal",
+    "rdp": "Remote Desktop",
+    "files": "Files",
+    "git": "Git"
+  },
+  "panes": {
+    "browser_title": "Multica Agent Workspace",
+    "browser_description": "Mock browser pane — CDP screencast would render here on a real runtime.",
+    "rdp_title": "Remote Desktop",
+    "rdp_description": "VNC/WebRTC stream placeholder — connect to dale-suzukimac-mini (mock)",
+    "rdp_stats": "1920 × 1080 · 30 fps · encrypted"
+  },
+  "sidebar": {
+    "new_chat": "New Chat"
+  }
+}
