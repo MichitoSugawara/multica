@@ -13,7 +13,10 @@ import {
   clearLoggedInCookie,
 } from "@/features/auth/auth-cookie";
 import { detectWebOS } from "@/platform/client-os";
-import { isWebMockMode } from "@/config/runtime-urls";
+
+// Direct member access so Next inlines this into the client bundle.
+// Do not read it through a helper that takes `process.env` as an object.
+const WEB_MOCK = process.env.NEXT_PUBLIC_MOCK === "1";
 
 // Legacy token in localStorage → keep this session in token mode so users who
 // logged in before the cookie-auth migration stay authed. They migrate to
@@ -51,15 +54,16 @@ export function WebProviders({
   resources,
   apiBaseUrl,
   wsUrl,
+  mock = WEB_MOCK,
 }: {
   children: React.ReactNode;
   locale: SupportedLocale;
   resources: Record<string, LocaleResources>;
   apiBaseUrl?: string;
   wsUrl?: string;
+  mock?: boolean;
 }) {
   const cookieAuth = !hasLegacyToken();
-  const mock = isWebMockMode();
   // Stable identity reference so downstream effects keyed on it don't see a
   // new object on every parent render.
   const identity = useMemo(

@@ -1,6 +1,12 @@
 type RuntimeEnv = Record<string, string | undefined>;
 
-/** UI-only mock. No Go API, DB, tunnel, or real login. */
+/**
+ * UI-only mock. No Go API, DB, tunnel, or real login.
+ * Server / next.config / proxy may pass `process.env`. Client components
+ * must use a direct `process.env.NEXT_PUBLIC_MOCK === "1"` check (or a
+ * boolean prop from a Server Component) — Next does not inline lookups
+ * through a helper that receives `process.env` as an object.
+ */
 export function isWebMockMode(env: RuntimeEnv = process.env): boolean {
   return env.NEXT_PUBLIC_MOCK === "1";
 }
