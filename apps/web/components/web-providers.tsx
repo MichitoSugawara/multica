@@ -13,6 +13,7 @@ import {
   clearLoggedInCookie,
 } from "@/features/auth/auth-cookie";
 import { detectWebOS } from "@/platform/client-os";
+import { isWebMockMode } from "@/config/runtime-urls";
 
 // Legacy token in localStorage → keep this session in token mode so users who
 // logged in before the cookie-auth migration stay authed. They migrate to
@@ -58,6 +59,7 @@ export function WebProviders({
   wsUrl?: string;
 }) {
   const cookieAuth = !hasLegacyToken();
+  const mock = isWebMockMode();
   // Stable identity reference so downstream effects keyed on it don't see a
   // new object on every parent render.
   const identity = useMemo(
@@ -68,8 +70,9 @@ export function WebProviders({
   return (
     <CoreProvider
       apiBaseUrl={apiBaseUrl}
-      wsUrl={wsUrl || deriveWsUrl()}
+      wsUrl={mock ? "" : wsUrl || deriveWsUrl()}
       cookieAuth={cookieAuth}
+      mock={mock}
       onLogin={setLoggedInCookie}
       onLogout={() => {
         // welcome-store holds the transient post-onboarding signal. Must

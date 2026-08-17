@@ -229,6 +229,13 @@ make dev
 `make dev` auto-detects your environment (main checkout or worktree), creates the env file,
 installs dependencies, sets up the database, runs migrations, and starts every service.
 
+Frontend-only mock (no Go API, database, tunnel, or login) — current dashboard chrome
+with a fixture user (`michitogawara@gmail.com`) and workspace (`ディオネ` / `dione`):
+
+```bash
+pnpm mock
+```
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow, worktree support, testing, and
 troubleshooting. The iOS client lives in [`apps/mobile/`](apps/mobile/) — its
 [README](apps/mobile/README.md) covers building it onto your own iPhone.

@@ -27,6 +27,12 @@ export interface CoreProviderProps {
   storage?: StorageAdapter;
   /** Use HttpOnly cookies for auth instead of localStorage tokens. Default: false. */
   cookieAuth?: boolean;
+  /**
+   * UI-only mock: seed a fixture user/workspace and answer `api.*` from
+   * in-memory fixtures. Host apps set this from NEXT_PUBLIC_MOCK; core
+   * never reads process.env.
+   */
+  mock?: boolean;
   /** Called after successful login (e.g. set cookie for Next.js middleware). */
   onLogin?: () => void;
   /** Called after logout (e.g. clear cookie). */

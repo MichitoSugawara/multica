@@ -1,5 +1,10 @@
 type RuntimeEnv = Record<string, string | undefined>;
 
+/** UI-only mock. No Go API, DB, tunnel, or real login. */
+export function isWebMockMode(env: RuntimeEnv = process.env): boolean {
+  return env.NEXT_PUBLIC_MOCK === "1";
+}
+
 function cleanUrl(raw: string | undefined): string | undefined {
   const value = raw?.trim();
   if (!value) return undefined;

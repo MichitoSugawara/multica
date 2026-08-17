@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "sh -c 'next dev --webpack --port \"${FRONTEND_PORT:-3000}\"'",
+    "mock": "NEXT_PUBLIC_MOCK=1 sh -c 'next dev --webpack --port \"${FRONTEND_PORT:-3000}\"'",
     "build": "fumadocs-mdx && next build --webpack",
     "start": "next start",
     "typecheck": "fumadocs-mdx && tsc --noEmit",

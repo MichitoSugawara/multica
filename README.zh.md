@@ -222,6 +222,14 @@ make dev
 `make dev` 会自己认出你在主 checkout 还是 worktree 里，然后创建 env 文件、装依赖、初始化数据库、
 跑迁移，最后把所有服务拉起来。
 
+只跑前端、不需要 Go API / 数据库 / 隧道 / 登录时：
+
+```bash
+pnpm mock
+```
+
+会用假用户（`michitogawara@gmail.com`）和假工作区（`ディオネ` / `dione`）打开现在的仪表盘。
+
 完整的开发流程、worktree 支持、测试和问题排查见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 iOS 客户端在 [`apps/mobile/`](apps/mobile/)，怎么编译装到自己 iPhone 上见它的
 [README](apps/mobile/README.md)。
