@@ -46,7 +46,7 @@ export function DashboardLayout({
           <NavigationProgress />
           {children}
           <ModalRegistry />
-          <SourceBackfillModal />
+          {teamWorkspace ? null : <SourceBackfillModal />}
           {extra}
         </SidebarInset>
       </SidebarProvider>
