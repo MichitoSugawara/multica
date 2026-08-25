@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { MOCK_WORKSPACE_SLUG } from "@multica/core/api/mock";
 import { LOCALE_COOKIE } from "@multica/core/i18n";
 import {
   MULTICA_LOCALE_HEADER,
   resolveLocaleFromSignals,
 } from "./lib/locale-routing";
-import { runtimeRewriteDestination } from "./config/runtime-urls";
+import { isWebMockMode, runtimeRewriteDestination } from "./config/runtime-urls";
 import { isOfficialMarketingHost } from "./lib/public-host";
 
 // Old workspace-scoped route segments that existed before the URL refactor
@@ -48,6 +49,19 @@ function nextWithLocale(req: NextRequest): NextResponse {
 // edge.
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (isWebMockMode(process.env)) {
+    if (
+      pathname === "/" ||
+      pathname === "/login" ||
+      pathname === "/onboarding"
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/${MOCK_WORKSPACE_SLUG}/work`;
+      return NextResponse.redirect(url);
+    }
+    return nextWithLocale(req);
+  }
+
   const runtimeDestination = runtimeRewriteDestination(pathname, process.env);
   if (runtimeDestination) {
     const url = new URL(runtimeDestination);

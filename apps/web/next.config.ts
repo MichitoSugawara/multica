@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { config } from "dotenv";
 import { resolve } from "path";
 import {
+  isWebMockMode,
   resolveDevDocsUrl,
   resolveDevRemoteApiUrl,
   resolveDocsUrl,
@@ -17,9 +18,13 @@ config({ path: resolve(__dirname, "../../.env") });
 // `next dev` falls back to the conventional localhost upstreams; builds use
 // the strict resolvers so prebuilt images keep unset upstreams unproxied.
 const isDev = process.env.NODE_ENV === "development";
-const remoteApiUrl = isDev
-  ? resolveDevRemoteApiUrl(process.env)
-  : resolveRemoteApiUrl(process.env);
+const isMock = isWebMockMode(process.env);
+// Mock mode must not proxy /api to a Go server — the client answers locally.
+const remoteApiUrl = isMock
+  ? undefined
+  : isDev
+    ? resolveDevRemoteApiUrl(process.env)
+    : resolveRemoteApiUrl(process.env);
 const docsUrl = isDev
   ? resolveDevDocsUrl(process.env)
   : resolveDocsUrl(process.env);
@@ -40,6 +45,8 @@ const allowedDevOrigins = process.env.CORS_ALLOWED_ORIGINS
 
 const nextConfig: NextConfig = {
   ...(process.env.STANDALONE === "true" ? { output: "standalone" as const } : {}),
+  // Isolate the mock lock/cache so `pnpm mock` can run beside `pnpm dev:web`.
+  ...(isMock ? { distDir: ".next-mock" } : {}),
   transpilePackages: ["@multica/core", "@multica/ui", "@multica/views"],
   ...(allowedDevOrigins && allowedDevOrigins.length > 0
     ? { allowedDevOrigins }

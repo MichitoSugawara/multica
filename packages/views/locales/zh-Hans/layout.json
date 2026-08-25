@@ -11,7 +11,10 @@
     "usage": "统计",
     "runtimes": "运行时",
     "skills": "Skills",
-    "settings": "设置"
+    "settings": "设置",
+    "work": "新工作",
+    "channels": "频道",
+    "members": "成员"
   },
   "tab": {
     "issue": "任务",

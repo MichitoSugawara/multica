@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApi } from "../api";
+import { MOCK_USER, MOCK_WORKSPACE } from "../api/mock";
 import { useAuthStore } from "../auth";
 import {
   captureSignupSource,
@@ -27,6 +28,7 @@ export function AuthInitializer({
   onLogout,
   storage = defaultStorage,
   cookieAuth,
+  mock,
   identity,
 }: {
   children: ReactNode;
@@ -34,6 +36,7 @@ export function AuthInitializer({
   onLogout?: () => void;
   storage?: StorageAdapter;
   cookieAuth?: boolean;
+  mock?: boolean;
   identity?: ClientIdentity;
 }) {
   const qc = useQueryClient();
@@ -95,6 +98,28 @@ export function AuthInitializer({
       resetAnalytics();
       useAuthStore.setState({ user: null, isLoading: false });
     };
+
+    const seedMockAuth = () => {
+      onAuthSuccess(MOCK_USER);
+      qc.setQueryData(workspaceKeys.list(), [MOCK_WORKSPACE]);
+    };
+
+    // UI mock: skip real login. Prefer live api.* fixtures, but never let a
+    // failed read take the shell down — fall back to the same seed objects.
+    if (mock) {
+      // Show team-workspace chrome on first paint; getConfig still refreshes later.
+      configStore.getState().setFeatureFlags({ team_workspace: true });
+      Promise.all([api.getMe(), api.listWorkspaces()])
+        .then(([user, wsList]) => {
+          onAuthSuccess(user);
+          qc.setQueryData(workspaceKeys.list(), wsList);
+        })
+        .catch((err) => {
+          logger.error("mock auth init failed; seeding fixtures", err);
+          seedMockAuth();
+        });
+      return;
+    }
 
     if (cookieAuth) {
       // Cookie mode: the HttpOnly cookie is sent automatically by the browser.

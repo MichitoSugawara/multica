@@ -11,7 +11,10 @@
     "usage": "Analytics",
     "runtimes": "Runtimes",
     "skills": "Skills",
-    "settings": "Settings"
+    "settings": "Settings",
+    "work": "New work",
+    "channels": "Channels",
+    "members": "Members"
   },
   "tab": {
     "issue": "Issue",

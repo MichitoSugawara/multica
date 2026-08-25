@@ -12,6 +12,7 @@
     "FRONTEND_ORIGIN",
     "NEXT_PUBLIC_API_URL",
     "NEXT_PUBLIC_WS_URL",
+    "NEXT_PUBLIC_MOCK",
     "MULTICA_SERVER_URL",
     "DOCS_URL",
     "COMPOSE_PROJECT_NAME",
@@ -33,6 +34,10 @@
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"]
     },
     "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "mock": {
       "cache": false,
       "persistent": true
     },

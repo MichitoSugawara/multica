@@ -18,6 +18,9 @@ describe("parseTabSubject", () => {
     ["/acme/runtimes", { kind: "page", page: "runtimes" }],
     ["/acme/skills", { kind: "page", page: "skills" }],
     ["/acme/settings", { kind: "page", page: "settings" }],
+    ["/acme/work", { kind: "page", page: "work" }],
+    ["/acme/channels", { kind: "page", page: "channels" }],
+    ["/acme/members", { kind: "page", page: "members" }],
     // Resource details
     ["/acme/issues/bug-1", { kind: "issue", id: "bug-1" }],
     ["/acme/projects/p1", { kind: "project", id: "p1" }],
@@ -55,8 +58,6 @@ describe("parseTabSubject", () => {
     ["/acme/chat", { kind: "chat", sessionId: null }],
     ["/acme/chat?session=sess-1", { kind: "chat", sessionId: "sess-1" }],
     ["/acme/chat?agent=ag-1", { kind: "chat", sessionId: null }],
-    // Members list route does not exist
-    ["/acme/members", { kind: "unknown" }],
     // Unknown / too short
     ["/acme/nope", { kind: "unknown" }],
     ["/acme", { kind: "unknown" }],

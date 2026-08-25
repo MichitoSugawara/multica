@@ -77,7 +77,7 @@ export function WSProvider({
   const identityOS = identity?.os;
 
   useEffect(() => {
-    if (!user || !wsSlug) return;
+    if (!wsUrl || !user || !wsSlug) return;
 
     // In token mode we need a token from storage; in cookie mode the HttpOnly
     // cookie is sent automatically with the WS upgrade request.

@@ -84,6 +84,10 @@ import type {
   TaskMessagePayload,
   Attachment,
   ChatSession,
+  HumanChannel,
+  MockPersona,
+  WorkConnection,
+  WorkLaunchResponse,
   ChatPinnedAgent,
   ChatMessage,
   ChatMessagesPage,
@@ -363,6 +367,13 @@ import {
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
   SkillSchema,
   EMPTY_SKILL,
+  HumanChannelListSchema,
+  HumanChannelSchema,
+  EMPTY_HUMAN_CHANNEL,
+  MockPersonaSchema,
+  EMPTY_MOCK_PERSONA,
+  WorkLaunchResponseSchema,
+  EMPTY_WORK_LAUNCH_RESPONSE,
   IssueViewSchema,
   IssueViewListSchema,
   IssueViewPreferenceSchema,
@@ -391,11 +402,21 @@ export interface ApiClientIdentity {
   os?: string;
 }
 
+export type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export interface ApiClientOptions {
   logger?: Logger;
   onUnauthorized?: () => void;
   /** Identifies the client to the server. Sent as X-Client-* headers. */
   identity?: ApiClientIdentity;
+  /**
+   * Override the network fetch. UI mock mode injects an in-memory adapter
+   * so the existing client never needs a Go API.
+   */
+  fetch?: FetchLike;
 }
 
 export interface ClientRuntimeSnapshot {
@@ -616,7 +637,8 @@ export class ApiClient {
 
     this.logger.info(`→ ${method} ${path}`, { rid });
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
+    const doFetch = this.options.fetch ?? globalThis.fetch;
+    const res = await doFetch(`${this.baseUrl}${path}`, {
       ...init,
       headers,
       credentials: "include",
@@ -2574,6 +2596,76 @@ export class ApiClient {
       method: "POST",
       headers: workspaceHeader(workspaceSlug),
       body: JSON.stringify(data),
+    });
+  }
+
+  async listChannels(): Promise<HumanChannel[]> {
+    const raw = await this.fetch<unknown>("/api/channels");
+    return parseWithFallback(raw, HumanChannelListSchema, [], {
+      endpoint: "GET /api/channels",
+    });
+  }
+
+  async getChannel(id: string): Promise<HumanChannel> {
+    const raw = await this.fetch<unknown>(`/api/channels/${id}`);
+    return parseWithFallback(raw, HumanChannelSchema, EMPTY_HUMAN_CHANNEL, {
+      endpoint: "GET /api/channels/:id",
+    });
+  }
+
+  async getMockPersona(): Promise<MockPersona> {
+    const raw = await this.fetch<unknown>("/api/mock/persona");
+    const parsed = parseWithFallback(raw, MockPersonaSchema, EMPTY_MOCK_PERSONA, {
+      endpoint: "GET /api/mock/persona",
+    });
+    return { role: parsed.role === "admin" ? "admin" : "member" };
+  }
+
+  async setMockPersona(role: MockPersona["role"]): Promise<MockPersona> {
+    const raw = await this.fetch<unknown>("/api/mock/persona", {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    const parsed = parseWithFallback(raw, MockPersonaSchema, EMPTY_MOCK_PERSONA, {
+      endpoint: "PATCH /api/mock/persona",
+    });
+    return { role: parsed.role === "admin" ? "admin" : "member" };
+  }
+
+  async createWork(data: {
+    title: string;
+    agent_id: string;
+    runtime_id: string;
+    connection: WorkConnection;
+    assigned_member_id?: string | null;
+  }): Promise<WorkLaunchResponse> {
+    const raw = await this.fetch<unknown>("/api/work", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, WorkLaunchResponseSchema, EMPTY_WORK_LAUNCH_RESPONSE, {
+      endpoint: "POST /api/work",
+    });
+  }
+
+  async promoteChannelMessage(
+    channelId: string,
+    messageId: string,
+    data?: {
+      agent_id?: string;
+      runtime_id?: string;
+      connection?: WorkConnection;
+    },
+  ): Promise<WorkLaunchResponse> {
+    const raw = await this.fetch<unknown>(
+      `/api/channels/${channelId}/messages/${messageId}/promote`,
+      {
+        method: "POST",
+        body: JSON.stringify(data ?? {}),
+      },
+    );
+    return parseWithFallback(raw, WorkLaunchResponseSchema, EMPTY_WORK_LAUNCH_RESPONSE, {
+      endpoint: "POST /api/channels/:id/messages/:id/promote",
     });
   }
 

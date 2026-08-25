@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { ApiClient } from "../api/client";
+import { createMockApiClient } from "../api/mock";
 import { installFreezeWatchdog } from "../diagnostics/freeze-watchdog";
 import { setApiInstance, setSchemaLogger } from "../api";
 import { createAuthStore, registerAuthStore } from "../auth";
@@ -36,6 +37,7 @@ function initCore(
   onLogout?: () => void,
   cookieAuth?: boolean,
   identity?: ClientIdentity,
+  mock?: boolean,
 ) {
   if (initialized) return;
 
@@ -53,13 +55,16 @@ function initCore(
     identity?.platform === "desktop" ? "desktop" : null,
   );
 
-  const api = new ApiClient(apiBaseUrl, {
+  const apiOptions = {
     logger: createLogger("api"),
     onUnauthorized: () => {
       storage.removeItem("multica_token");
     },
     identity,
-  });
+  };
+  const api = mock
+    ? createMockApiClient(apiBaseUrl, apiOptions)
+    : new ApiClient(apiBaseUrl, apiOptions);
   setApiInstance(api);
   setSchemaLogger(createLogger("api-schema"));
 
@@ -88,6 +93,7 @@ export function CoreProvider({
   wsUrl = "ws://localhost:8080/ws",
   storage = defaultStorage,
   cookieAuth,
+  mock,
   onLogin,
   onLogout,
   identity,
@@ -98,7 +104,7 @@ export function CoreProvider({
   // Initialize singletons on first render only. Dependencies are read-once:
   // apiBaseUrl, storage, and callbacks are set at app boot and never change at runtime.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => initCore(apiBaseUrl, storage, onLogin, onLogout, cookieAuth, identity), []);
+  useMemo(() => initCore(apiBaseUrl, storage, onLogin, onLogout, cookieAuth, identity, mock), []);
 
   // Client-only freeze watchdog — shared by web and desktop. No-op on the
   // server and idempotent, so mounting it here covers both apps in one place.
@@ -116,6 +122,7 @@ export function CoreProvider({
         onLogout={onLogout}
         storage={storage}
         cookieAuth={cookieAuth}
+        mock={mock}
         identity={identity}
       >
         {/* Desktop's reporter owns both activity and runtime state so it must
@@ -124,7 +131,7 @@ export function CoreProvider({
           <ClientUsageReporter storage={storage} identity={identity} />
         )}
         <WSProvider
-          wsUrl={wsUrl}
+          wsUrl={mock ? "" : wsUrl}
           authStore={authStore}
           storage={storage}
           cookieAuth={cookieAuth}

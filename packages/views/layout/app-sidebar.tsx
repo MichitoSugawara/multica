@@ -71,7 +71,8 @@ import { chatSessionsOptions } from "@multica/core/chat/queries";
 import { countUnreadChatMessages } from "@multica/core/chat/unread";
 import { useChatStore } from "@multica/core/chat";
 import { api, ApiError } from "@multica/core/api";
-import { useConfigStore } from "@multica/core/config";
+import { useConfigStore, useFeatureEnabled } from "@multica/core/config";
+import { TeamSidebar } from "../work/team-sidebar";
 import { pinListOptions } from "@multica/core/pins/queries";
 import { useDeletePin, useReorderPins } from "@multica/core/pins/mutations";
 import { issueDetailOptions } from "@multica/core/issues/queries";
@@ -418,6 +419,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }: AppSidebarProps = {}) {
+  const teamWorkspace = useFeatureEnabled("team_workspace");
   const { t } = useT("layout");
   const { pathname, push } = useNavigation();
   const user = useAuthStore((s) => s.user);
@@ -585,6 +587,16 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   });
 
   const createIssueShortcut = useShortcut("createIssue");
+
+  if (teamWorkspace) {
+    return (
+      <TeamSidebar
+        topSlot={topSlot}
+        headerClassName={headerClassName}
+        headerStyle={headerStyle}
+      />
+    );
+  }
 
   return (
       <Sidebar variant="inset">

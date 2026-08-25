@@ -9,6 +9,7 @@ import type { SupportedLocale } from "@multica/core/i18n";
 import { RESOURCES } from "@multica/views/locales";
 import { getRequestLocale } from "@/lib/request-locale";
 import {
+  isWebMockMode,
   resolveBrowserApiBaseUrl,
   resolveBrowserWsUrl,
 } from "@/config/runtime-urls";
@@ -122,6 +123,10 @@ export default async function RootLayout({
   const resources = { [locale]: RESOURCES[locale] };
   const apiBaseUrl = resolveBrowserApiBaseUrl(process.env);
   const wsUrl = resolveBrowserWsUrl(process.env);
+  // Pass mock as a serialized boolean. Client bundles cannot read
+  // `process.env.NEXT_PUBLIC_MOCK` through a helper that takes `process.env`
+  // as an object — Next only inlines direct member access.
+  const mock = isWebMockMode(process.env);
 
   return (
     <html
@@ -154,6 +159,7 @@ export default async function RootLayout({
             resources={resources}
             apiBaseUrl={apiBaseUrl}
             wsUrl={wsUrl}
+            mock={mock}
           >
             {children}
           </WebProviders>

@@ -10,7 +10,18 @@ export type {
   ApiClientOptions,
   ClientRuntimeSnapshot,
   ClientUsageRequest,
+  FetchLike,
 } from "./client";
+export {
+  createMockApiClient,
+  createMockFetch,
+  resetMockState,
+  MOCK_USER,
+  MOCK_USER_EMAIL,
+  MOCK_WORKSPACE,
+  MOCK_WORKSPACE_NAME,
+  MOCK_WORKSPACE_SLUG,
+} from "./mock";
 export { parseWithFallback, setSchemaLogger } from "./schema";
 export type { ParseOptions } from "./schema";
 export { DuplicateIssueErrorBodySchema } from "./schemas";

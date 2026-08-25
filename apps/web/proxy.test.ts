@@ -119,6 +119,35 @@ describe("proxy legacy workspace route redirects", () => {
   });
 });
 
+describe("proxy mock mode", () => {
+  it("sends / and /login to the fixture workspace without a session cookie", () => {
+    const previous = process.env.NEXT_PUBLIC_MOCK;
+    process.env.NEXT_PUBLIC_MOCK = "1";
+    try {
+      expect(redirectLocation("/")).toBe("https://app.multica.test/dale/work");
+      expect(redirectLocation("/login")).toBe("https://app.multica.test/dale/work");
+      expect(redirectLocation("/dale/work")).toBeNull();
+    } finally {
+      restoreEnv("NEXT_PUBLIC_MOCK", previous);
+    }
+  });
+
+  it("does not rewrite API requests to a remote backend", () => {
+    const previous = process.env.NEXT_PUBLIC_MOCK;
+    const previousRemote = process.env.REMOTE_API_URL;
+    process.env.NEXT_PUBLIC_MOCK = "1";
+    process.env.REMOTE_API_URL = "http://backend:8080";
+    try {
+      const res = proxy(makeRequest("/api/me"));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    } finally {
+      restoreEnv("NEXT_PUBLIC_MOCK", previous);
+      restoreEnv("REMOTE_API_URL", previousRemote);
+    }
+  });
+});
+
 describe("proxy runtime upstream rewrites", () => {
   it("does not rewrite API requests when no runtime API origin is configured", () => {
     withoutRuntimeUpstreams(() => {

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { createMemoryRouter, Outlet, useMatches } from "react-router-dom";
+import { createMemoryRouter, Outlet, useMatches, useParams } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { IssueDetailPage } from "./pages/issue-detail-page";
 import { ProjectDetailPage } from "./pages/project-detail-page";
@@ -29,6 +29,7 @@ import {
 import { SquadsPage, SquadDetailPage as SquadDetailPageView } from "@multica/views/squads/components";
 import { InboxPage } from "@multica/views/inbox";
 import { ChatPage } from "@multica/views/chat";
+import { ChannelIndexPage, ChannelPage, MembersPage, NewWorkPage } from "@multica/views/work";
 import { SettingsPage } from "@multica/views/settings";
 import { useT } from "@multica/views/i18n";
 import { Download, Server } from "lucide-react";
@@ -42,6 +43,11 @@ import { DesktopRouteErrorPage } from "./components/route-error-page";
  * from i18n. The route element has to be a component (not a literal JSX
  * value) for `useT` to run.
  */
+function DesktopChannelPage() {
+  const { id } = useParams();
+  return <ChannelPage channelId={id ?? ""} />;
+}
+
 function DesktopSettingsRoute() {
   const { t } = useT("settings");
   return (
@@ -221,6 +227,10 @@ export const appRoutes: RouteObject[] = [
             handle: { title: "Squad" },
           },
           { path: "inbox", element: <InboxPage />, handle: { title: "Inbox" } },
+          { path: "work", element: <NewWorkPage />, handle: { title: "New work" } },
+          { path: "channels", element: <ChannelIndexPage />, handle: { title: "Channels" } },
+          { path: "channels/:id", element: <DesktopChannelPage />, handle: { title: "Channel" } },
+          { path: "members", element: <MembersPage />, handle: { title: "Members" } },
           { path: "chat", element: <ChatPage />, handle: { title: "Chat" } },
           {
             path: "attachments/:id/preview",
