@@ -107,6 +107,8 @@ export function AuthInitializer({
     // UI mock: skip real login. Prefer live api.* fixtures, but never let a
     // failed read take the shell down — fall back to the same seed objects.
     if (mock) {
+      // Show team-workspace chrome on first paint; getConfig still refreshes later.
+      configStore.getState().setFeatureFlags({ team_workspace: true });
       Promise.all([api.getMe(), api.listWorkspaces()])
         .then(([user, wsList]) => {
           onAuthSuccess(user);
