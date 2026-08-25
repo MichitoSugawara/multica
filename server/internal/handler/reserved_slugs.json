@@ -80,7 +80,10 @@
         "skills",
         "settings",
         "workspaces",
-        "teams"
+        "teams",
+        "chat",
+        "channels",
+        "work"
       ]
     },
     {

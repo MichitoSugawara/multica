@@ -55,7 +55,10 @@ export type NavLabelKey =
   | "usage"
   | "runtimes"
   | "skills"
-  | "settings";
+  | "settings"
+  | "work"
+  | "channels"
+  | "members";
 
 /** Stable identifier for each workspace navigation page. */
 export type WorkspacePageKey =
@@ -70,7 +73,10 @@ export type WorkspacePageKey =
   | "usage"
   | "runtimes"
   | "skills"
-  | "settings";
+  | "settings"
+  | "work"
+  | "channels"
+  | "members";
 
 export interface WorkspacePage {
   /** Route segment at index 1 of `/{slug}/{segment}/...`. */
@@ -98,6 +104,9 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   runtimes: { segment: "runtimes", icon: "Monitor", navKey: "runtimes" },
   skills: { segment: "skills", icon: "BookOpenText", navKey: "skills" },
   settings: { segment: "settings", icon: "Settings", navKey: "settings" },
+  work: { segment: "work", icon: "MessageSquare", navKey: "work" },
+  channels: { segment: "channels", icon: "MessageSquare", navKey: "channels" },
+  members: { segment: "members", icon: "Users", navKey: "members" },
 };
 
 /** Reverse lookup: route segment → page key. */

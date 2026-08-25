@@ -2068,3 +2068,40 @@ describe("ApiClient refreshSkill response schema", () => {
     });
   });
 });
+
+describe("team workspace mock endpoints", () => {
+  it("falls back to an empty channel list when the response is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ channels: "nope" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(new ApiClient("https://api.example.test").listChannels()).resolves.toEqual([]);
+  });
+
+  it("falls back to an empty work launch when the response is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    const result = await new ApiClient("https://api.example.test").createWork({
+      title: "x",
+      agent_id: "a",
+      runtime_id: "r",
+      connection: "direct",
+    });
+    expect(result.session.id).toBe("");
+    expect(result.issue.id).toBe("");
+  });
+});

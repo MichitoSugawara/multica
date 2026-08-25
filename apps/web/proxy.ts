@@ -56,7 +56,7 @@ export function proxy(req: NextRequest) {
       pathname === "/onboarding"
     ) {
       const url = req.nextUrl.clone();
-      url.pathname = `/${MOCK_WORKSPACE_SLUG}/issues`;
+      url.pathname = `/${MOCK_WORKSPACE_SLUG}/work`;
       return NextResponse.redirect(url);
     }
     return nextWithLocale(req);

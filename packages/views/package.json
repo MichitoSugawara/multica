@@ -39,6 +39,7 @@
     "./layout/route-icon-components": "./layout/route-icon-components.tsx",
     "./auth": "./auth/index.ts",
     "./search": "./search/index.ts",
+    "./work": "./work/index.ts",
     "./chat": "./chat/index.ts",
     "./settings": "./settings/index.ts",
     "./settings/lark-tab": "./settings/components/lark-tab.tsx",

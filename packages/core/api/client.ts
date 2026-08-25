@@ -84,6 +84,10 @@ import type {
   TaskMessagePayload,
   Attachment,
   ChatSession,
+  HumanChannel,
+  MockPersona,
+  WorkConnection,
+  WorkLaunchResponse,
   ChatPinnedAgent,
   ChatMessage,
   ChatMessagesPage,
@@ -363,6 +367,13 @@ import {
   MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
   SkillSchema,
   EMPTY_SKILL,
+  HumanChannelListSchema,
+  HumanChannelSchema,
+  EMPTY_HUMAN_CHANNEL,
+  MockPersonaSchema,
+  EMPTY_MOCK_PERSONA,
+  WorkLaunchResponseSchema,
+  EMPTY_WORK_LAUNCH_RESPONSE,
   IssueViewSchema,
   IssueViewListSchema,
   IssueViewPreferenceSchema,
@@ -2585,6 +2596,76 @@ export class ApiClient {
       method: "POST",
       headers: workspaceHeader(workspaceSlug),
       body: JSON.stringify(data),
+    });
+  }
+
+  async listChannels(): Promise<HumanChannel[]> {
+    const raw = await this.fetch<unknown>("/api/channels");
+    return parseWithFallback(raw, HumanChannelListSchema, [], {
+      endpoint: "GET /api/channels",
+    });
+  }
+
+  async getChannel(id: string): Promise<HumanChannel> {
+    const raw = await this.fetch<unknown>(`/api/channels/${id}`);
+    return parseWithFallback(raw, HumanChannelSchema, EMPTY_HUMAN_CHANNEL, {
+      endpoint: "GET /api/channels/:id",
+    });
+  }
+
+  async getMockPersona(): Promise<MockPersona> {
+    const raw = await this.fetch<unknown>("/api/mock/persona");
+    const parsed = parseWithFallback(raw, MockPersonaSchema, EMPTY_MOCK_PERSONA, {
+      endpoint: "GET /api/mock/persona",
+    });
+    return { role: parsed.role === "admin" ? "admin" : "member" };
+  }
+
+  async setMockPersona(role: MockPersona["role"]): Promise<MockPersona> {
+    const raw = await this.fetch<unknown>("/api/mock/persona", {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    const parsed = parseWithFallback(raw, MockPersonaSchema, EMPTY_MOCK_PERSONA, {
+      endpoint: "PATCH /api/mock/persona",
+    });
+    return { role: parsed.role === "admin" ? "admin" : "member" };
+  }
+
+  async createWork(data: {
+    title: string;
+    agent_id: string;
+    runtime_id: string;
+    connection: WorkConnection;
+    assigned_member_id?: string | null;
+  }): Promise<WorkLaunchResponse> {
+    const raw = await this.fetch<unknown>("/api/work", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, WorkLaunchResponseSchema, EMPTY_WORK_LAUNCH_RESPONSE, {
+      endpoint: "POST /api/work",
+    });
+  }
+
+  async promoteChannelMessage(
+    channelId: string,
+    messageId: string,
+    data?: {
+      agent_id?: string;
+      runtime_id?: string;
+      connection?: WorkConnection;
+    },
+  ): Promise<WorkLaunchResponse> {
+    const raw = await this.fetch<unknown>(
+      `/api/channels/${channelId}/messages/${messageId}/promote`,
+      {
+        method: "POST",
+        body: JSON.stringify(data ?? {}),
+      },
+    );
+    return parseWithFallback(raw, WorkLaunchResponseSchema, EMPTY_WORK_LAUNCH_RESPONSE, {
+      endpoint: "POST /api/channels/:id/messages/:id/promote",
     });
   }
 

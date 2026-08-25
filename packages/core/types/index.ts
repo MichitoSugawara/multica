@@ -123,6 +123,16 @@ export {
   stripChannelMediaMarkers,
 } from "./attachment-url";
 export type {
+  ChannelMessage,
+  ChannelMessageAuthorKind,
+  HumanChannel,
+  MockPersona,
+  MockPersonaRole,
+  WorkConnection,
+  WorkLaunch,
+  WorkLaunchResponse,
+} from "./channel";
+export type {
   ChatSession,
   ChatLastMessage,
   ChatPinnedAgent,

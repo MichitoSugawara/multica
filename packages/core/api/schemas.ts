@@ -65,6 +65,9 @@ import type {
   SearchProjectsResponse,
   Skill,
   Squad,
+  HumanChannel,
+  MockPersona,
+  WorkLaunchResponse,
   TimelineEntry,
   User,
   WebhookDelivery,
@@ -2538,4 +2541,121 @@ export const EMPTY_SKILL: Skill = {
   created_at: "",
   updated_at: "",
   files: [],
+};
+
+export const ChannelMessageSchema = z.object({
+  id: z.string(),
+  channel_id: z.string(),
+  author_id: z.string(),
+  author_name: z.string().default(""),
+  author_kind: z.string().default("member"),
+  body: z.string().default(""),
+  created_at: z.string().default(""),
+  promoted_session_id: z.string().nullable().default(null),
+}).loose();
+
+export const HumanChannelSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().default(""),
+  slug: z.string().default(""),
+  name: z.string().default(""),
+  topic: z.string().default(""),
+  messages: z.array(ChannelMessageSchema).default([]),
+  message_count: z.number().optional(),
+}).loose();
+
+export const HumanChannelListSchema = z.array(HumanChannelSchema);
+
+export const EMPTY_HUMAN_CHANNEL: HumanChannel = {
+  id: "",
+  workspace_id: "",
+  slug: "",
+  name: "",
+  topic: "",
+  messages: [],
+};
+
+export const MockPersonaSchema = z.object({
+  role: z.string().default("member"),
+}).loose();
+
+export const EMPTY_MOCK_PERSONA: MockPersona = { role: "member" };
+
+export const WorkLaunchSchema = z.object({
+  issue_id: z.string().default(""),
+  session_id: z.string().default(""),
+  runtime_id: z.string().default(""),
+  connection: z.string().default("direct"),
+  assigned_member_id: z.string().nullable().default(null),
+}).loose();
+
+const WorkChatSessionSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string().default(""),
+  agent_id: z.string().default(""),
+  creator_id: z.string().default(""),
+  project_id: z.string().nullable().optional().default(null),
+  title: z.string().default(""),
+  status: z.string().default("active"),
+  has_unread: z.boolean().default(false),
+  unread_count: z.number().optional().default(0),
+  last_message: z.unknown().nullable().optional().default(null),
+  pinned: z.boolean().optional().default(false),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+}).loose();
+
+export const WorkLaunchResponseSchema = z.object({
+  issue: IssueSchema,
+  session: WorkChatSessionSchema,
+  launch: WorkLaunchSchema.optional(),
+}).loose();
+
+export const EMPTY_WORK_LAUNCH_RESPONSE: WorkLaunchResponse = {
+  issue: {
+    id: "",
+    workspace_id: "",
+    number: 0,
+    identifier: "",
+    title: "",
+    description: null,
+    status: "todo",
+    priority: "none",
+    assignee_type: null,
+    assignee_id: null,
+    creator_type: "member",
+    creator_id: "",
+    parent_issue_id: null,
+    project_id: null,
+    position: 0,
+    stage: null,
+    start_date: null,
+    due_date: null,
+    metadata: {},
+    properties: {},
+    created_at: "",
+    updated_at: "",
+  },
+  session: {
+    id: "",
+    workspace_id: "",
+    agent_id: "",
+    creator_id: "",
+    project_id: null,
+    title: "",
+    status: "active",
+    has_unread: false,
+    unread_count: 0,
+    last_message: null,
+    pinned: false,
+    created_at: "",
+    updated_at: "",
+  },
+  launch: {
+    issue_id: "",
+    session_id: "",
+    runtime_id: "",
+    connection: "direct",
+    assigned_member_id: null,
+  },
 };

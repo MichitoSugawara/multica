@@ -124,9 +124,9 @@ describe("proxy mock mode", () => {
     const previous = process.env.NEXT_PUBLIC_MOCK;
     process.env.NEXT_PUBLIC_MOCK = "1";
     try {
-      expect(redirectLocation("/")).toBe("https://app.multica.test/dione/issues");
-      expect(redirectLocation("/login")).toBe("https://app.multica.test/dione/issues");
-      expect(redirectLocation("/dione/issues")).toBeNull();
+      expect(redirectLocation("/")).toBe("https://app.multica.test/dale/work");
+      expect(redirectLocation("/login")).toBe("https://app.multica.test/dale/work");
+      expect(redirectLocation("/dale/work")).toBeNull();
     } finally {
       restoreEnv("NEXT_PUBLIC_MOCK", previous);
     }
